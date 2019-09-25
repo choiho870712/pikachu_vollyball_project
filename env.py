@@ -1,37 +1,78 @@
-import cv2
-from mss import mss
-import numpy as np
-import math
-import random
-import time
-import pynput
+# https://thispointer.com/python-check-if-a-process-is-running-by-name-and-find-its-process-id-pid/
+import psutil
+
+class psutil_api :
+
+    def findProcessIdByName(processName):
+        listOfProcessObjects = []
+
+        #Iterate over the all the running process
+        for proc in psutil.process_iter():
+           try:
+               pinfo = proc.as_dict(attrs=['pid', 'name', 'create_time'])
+               # Check if process name contains the given name string.
+               if processName.lower() in pinfo['name'].lower() :
+                   listOfProcessObjects.append(pinfo)
+           except (psutil.NoSuchProcess, psutil.AccessDenied , psutil.ZombieProcess) :
+               pass
+    
+        return listOfProcessObjects[0]['pid']
+
+
+# https://code.activestate.com/recipes/576362-list-system-process-and-process-information-on-win/
+# https://docs.microsoft.com/zh-tw/windows/win32/api/tlhelp32/nf-tlhelp32-module32first
+from ctypes import c_long , c_int , c_uint , c_char , c_ubyte , c_char_p , c_void_p , c_ulong
+from ctypes import windll
+from ctypes import byref
+
+class win32_api :
+
+    def __init__(self, pid) :
+        self.OpenProcess = windll.kernel32.OpenProcess
+        self.CloseHandle = windll.kernel32.CloseHandle
+        self.ReadProcessMemory = windll.kernel32.ReadProcessMemory
+        self.buffer = c_char_p(b"0")
+        self.bufferSize = len(self.buffer.value)
+        self.bytesRead = c_ulong(0)
+        self.processHandle = self.OpenProcess(0xFFF, False, pid)
+
+    def memoryRead(self, address) :
+        self.ReadProcessMemory(self.processHandle, address, self.buffer, self.bufferSize, byref(self.bytesRead))
+        return int.from_bytes(self.buffer.value, byteorder='little')
+
+
 from pynput.keyboard import Key, Controller
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-from collections import namedtuple
-import matplotlib
-import matplotlib.pyplot as plt
+import numpy as np
 
-plt.ion()
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-class Env(object) :
+class Env :
 
     def __init__(self) :
-        self.bbox = {'top': 42, 'left': 0, 'width': 430, 'height': 280}
-        self.sct = mss()
+        self.win32_api_handler = win32_api(psutil_api.findProcessIdByName("volleyball"))
+        head_address = self.head_address()
+        self.player2_score_address = head_address + 0x0e1c
+        self.player1_score_address = head_address + 0x0e20
+        self.player2_y_address = head_address + 0x0ee8
+        self.player2_x_address = head_address + 0x0eec
+        self.player1_y_address = head_address + 0x5310
+        self.player1_x_address = head_address + 0x5314
+        self.ball_y_address = head_address + 0x64e0
+        self.ball_x_address = head_address + 0x64e4
+        self.flag_address = head_address + 0x0e28
         self.keyboard = Controller()
-        self.lower_red = np.array([0, 200, 120])
-        self.upper_red = np.array([10, 255, 150])
-        self.lower_yellow = np.array([20, 120, 100])
-        self.upper_yellow = np.array([30, 255, 255])
-        self.img_high = 100
-        self.img_width = 100
-        self.gaming_status = "gameset"
-        self.time_stamp = 0
+        self.reset()
+        print("done init")
+
+    def head_address(self) :
+        addr = 0x2000ee8
+        while addr < 0x3000000 :
+            value = self.win32_api_handler.memoryRead(addr)
+            if value == 36 :
+                return addr - 0x0ee8
+
+            addr += 0x10000
+
+        print("head_address error")
+        return 0x400000
 
     def reset(self):
         self.keyboard.release(Key.up)
@@ -39,96 +80,71 @@ class Env(object) :
         self.keyboard.release(Key.left)
         self.keyboard.release(Key.right)
         self.keyboard.release(Key.enter)
+        self.player1_score = 0
+        self.player2_score = 0
 
-    def step(self, num):
-        if num == 0: # up
-            self.keyboard.release(Key.down)
+    def state(self) :
+        s = []
+        s.append(self.win32_api_handler.memoryRead(self.player2_y_address))
+        s.append(self.win32_api_handler.memoryRead(self.player2_x_address))
+        s.append(self.win32_api_handler.memoryRead(self.player1_y_address))
+        s[-1] += self.win32_api_handler.memoryRead(self.player1_y_address+1) << 8
+        s.append(self.win32_api_handler.memoryRead(self.player1_x_address))
+        s.append(self.win32_api_handler.memoryRead(self.ball_y_address))
+        s[-1] += self.win32_api_handler.memoryRead(self.ball_y_address+1) << 8
+        s.append(self.win32_api_handler.memoryRead(self.ball_x_address))
+        return np.array(s)
+
+    def reward(self) :
+        p1_score = self.win32_api_handler.memoryRead(self.player1_score_address)
+        p2_score = self.win32_api_handler.memoryRead(self.player2_score_address)
+
+        # caculate reward
+        if p1_score != self.player1_score :
+            self.player1_score = p1_score
+            return 1
+        elif p2_score != self.player2_score :
+            self.player2_score = p2_score
+            return -1
+        else :
+            return 0
+
+    def flag(self) :
+        return self.win32_api_handler.memoryRead(self.flag_address)
+
+    def step(self, action) :
+        # up
+        if action[0] > 0.5:
             self.keyboard.press(Key.up)
-        elif num == 1: # down
+        else :
             self.keyboard.release(Key.up)
+
+        # down
+        if action[1] > 0.5:
             self.keyboard.press(Key.down)
-        elif num == 2: # left
-            self.keyboard.release(Key.right)
-            self.keyboard.press(Key.left)
-        elif num == 3: # right
-            self.keyboard.release(Key.left)
-            self.keyboard.press(Key.right)
-        elif num == 4: # enter
-            self.keyboard.press(Key.enter)
-        elif num == 5: # release all
-            self.keyboard.release(Key.up)
+        else :
             self.keyboard.release(Key.down)
+
+        # left
+        if action[2] > 0.5:
+            self.keyboard.press(Key.left)
+        else :
             self.keyboard.release(Key.left)
+
+        # right
+        if action[3] > 0.5:
+            self.keyboard.press(Key.right)
+        else :
             self.keyboard.release(Key.right)
+
+        # enter
+        if action[4] > 0.5:
+            self.keyboard.press(Key.enter)
+        else :
             self.keyboard.release(Key.enter)
 
     def get_screen(self) :
-
-        def preprocessing(img) :
-            img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-            img_red = cv2.inRange(img_hsv, self.lower_red, self.upper_red)
-            img_yellow = cv2.inRange(img_hsv, self.lower_yellow, self.upper_yellow)
-            return img_red + img_yellow
-
-        def get_reward(img) :
-            left_boom = np.sum(img[-1:, int(self.img_width/2):])
-            right_boom = np.sum(img[-1:, :int(self.img_width/2)])
-            reward = 0
-            if self.gaming_status == "gaming" :
-                if left_boom > right_boom :
-                    reward = -1
-                elif left_boom < right_boom :
-                    reward = 1
-
-            return reward
-
-        def set_status(img, reward) :
-
-            def compare_area_ratio(img, ratio) :
-                if np.sum(img) >= np.size(img)*255*ratio :
-                    return True
-                else :
-                    return False
-
-            if self.gaming_status == "gaming" :
-                if reward != 0 :
-                    self.gaming_status = "next_stage"
-                    self.time_stamp = time.time()
-                    print(self.gaming_status)
-            elif self.gaming_status == "gameset" :
-                if compare_area_ratio(img, 0.2) :           # wait for start( find start page )
-                    self.gaming_status = "waiting_for_start"
-                    print(self.gaming_status)
-            elif self.gaming_status == "waiting_for_start" :
-                if np.sum(img) == 0 :                       # black screen
-                    self.gaming_status = "start"
-                    self.time_stamp = time.time()
-                    print(self.gaming_status)
-            elif self.gaming_status == "start" :
-                if time.time() - self.time_stamp > 2.872 :   # start delay end
-                    self.gaming_status = "gaming"
-                    print(self.gaming_status)
-            elif self.gaming_status == "next_stage" : 
-                if time.time() - self.time_stamp > 2.372 :    # next delay end
-                    self.gaming_status = "gaming"                         # restart( find gameset flag )
-                    print(self.gaming_status)
-                elif compare_area_ratio(img[ int(self.img_high*0.05):int(self.img_high*0.3) , : ], 0.3) :
-                    self.gaming_status = "gameset" 
-                    print(self.gaming_status)
-
-        img = cv2.resize(np.array(self.sct.grab(self.bbox)), (self.img_high, self.img_width))
-        mask = preprocessing(img)
-        reward = get_reward(mask)
-        set_status(mask, reward)
-
-        # transform state
-        mask = mask[:int(self.img_high*0.9), :]
-        state = np.expand_dims(mask, axis=0)  # shape(H, W) to shape(C, H, W)
-        state = np.expand_dims(state, axis=0)  # shape(C, H, W)  to shape(B, C, H, W)
-        state = np.ascontiguousarray(state, dtype=np.float32) / 255
-        state = torch.tensor(state, device=device, dtype=torch.float)
-            
-        return state, reward, self.gaming_status
+        return self.state(), self.reward(), self.flag()
 
 Transition_trajectory = namedtuple('Transition_trajectory', ('state', 'action'))
 class Trajectory(object) :
@@ -307,10 +323,8 @@ class Actor(object) :
         self.optimizer.step()
 
 
-
 env = Env()
-env.reset() # release all key
-state, reward, gaming_status = env.get_screen()
+state, reward, flag = env.get_screen()
 
 actor = Actor(np.shape(state)[2], np.shape(state)[3], 6, device)
 trajectory = Trajectory(1000)
@@ -324,7 +338,7 @@ while "Screen capturing":
     state, reward, gaming_status = env.get_screen()
 
     # show state
-    cv2.imshow("show", cv2.resize(state.cpu().squeeze(0).squeeze(0).numpy(), (400, 400)))
+    cv2.imshow("show", cv2.resize(state.cpu().squeeze(0).squeeze(0).numpy(), (200, 200)))
     cv2.waitKey(50)
 
     # if in game, action

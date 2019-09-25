@@ -1,0 +1,29 @@
+reward :
+	p2.score    // shift_address = 0x0e1c
+	p1.score    // shift_address = 0x0e20
+
+state :
+	player2.y   // shift_address = 0x0ee8 // data_size = 4bits // init = 36  // range = 32  ~ 184
+	player2.x   // shift_address = 0x0eec // data_size = 4bits // init = 244 // range = 108 ~ 244
+	player1.y   // shift_address = 0x5310 // data_size = 8bits // init = 396 // range = 248 ~ 400
+	player1.x   // shift_address = 0x5314 // data_size = 4bits // init = 244 // range = 108 ~ 244
+	ball.y      // shift_address = 0x64e0 // data_size = 8bits // init = 56  // range = 20  ~ 436
+	ball.x      // shift_address = 0x64e4 // data_size = 4bits // init = 0   // range = 0   ~ 252
+
+action :
+	action.up
+	action.down
+	action.left
+	action.right
+	action.enter
+
+model input :
+	1. current state
+	2. next state after 10ms
+	3. current action
+
+flag : // shift_address = 0x0e28
+	1 : game start
+	2 : gaming
+	3 : game end
+	4 : game set
