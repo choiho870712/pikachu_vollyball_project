@@ -1,10 +1,10 @@
 # pikachu_vollyball_project
 
-step1. 開啟遊戲後將視窗拉至左上角對齊好(我們還沒有match screen的功能)
+-- step1. 開啟遊戲後將視窗拉至左上角對齊好(我們還沒有match screen的功能)
 
-step2. 遊戲內調 "快速"，分數設定成 "5"  (在 "設定" 裡面)
+-- step2. 遊戲內調 "快速"，分數設定成 "5"  (在 "設定" 裡面)
 
-step3. 執行 DQN_pika.py
+-- step3. 執行 DQN_pika.py
 
 
 
