@@ -42,8 +42,7 @@ def down():
 
 def p():
     keyboard.press(Key.enter)
-    time.sleep(0.1)
-    keyboard.release(Key.enter)
 
 def get_key_map() :
+    keyboard.release(Key.enter)
     return np.array(is_pressed)
