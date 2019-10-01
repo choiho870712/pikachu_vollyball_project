@@ -11,19 +11,32 @@ state :
 	ball.x      // shift_address = 0x64e4 // data_size = 4bits // init = 0   // range = 0   ~ 252
 
 action :
-	action.up
-	action.down
-	action.left
-	action.right
-	action.enter
+	ground_action :
+		0. stay
+		1. left
+		2. right
+		3. jump
+		4. left_p
+		5. right_p
+	jump_action :
+		0. stay
+		1. left_p
+		2. right_p
+		3. up_p
+		4. p
+		5. down_p
 
 model input :
 	1. current state
-	2. next state after 10ms
-	3. current action
+	2. next state after 0.2s
 
 flag : // shift_address = 0x0e28
 	1 : game start
 	2 : gaming
 	3 : game end
 	4 : game set
+
+
+
+
+
