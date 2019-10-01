@@ -11,3 +11,15 @@ step4. 取消暫停開始打球
 # strategy
 
 check design_model.txt
+
+# to do list
+
+1. state normalization
+
+2. reward given strategy
+
+3. cheat engine controlling
+
+4. parallel agent
+
+5. a3c
