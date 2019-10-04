@@ -56,12 +56,15 @@ class Env :
         # find player1's (x,y)
         addr = 0x2000000
         max_addr = 0x5000000
-        value = self.win32_api_handler.memoryRead(addr)
+        value1 = self.win32_api_handler.memoryRead(addr)
+        value2 = self.win32_api_handler.memoryRead(addr+0x1)
         while addr < max_addr :
             addr += 0x4
-            pre_value = value
-            value = self.win32_api_handler.memoryRead(addr)
-            if pre_value == 140 and value == 244 :
+            pre_value1 = value1
+            pre_value2 = value2
+            value1 = self.win32_api_handler.memoryRead(addr)
+            value2 = self.win32_api_handler.memoryRead(addr+0x1)
+            if pre_value1 == 140 and pre_value2 == 1 and value1 == 244 :
                 self.player1_y_address = addr - 0x4
                 self.player1_x_address = addr
                 break
@@ -84,12 +87,15 @@ class Env :
 
         # find ball's (x,y)
         addr = self.player1_x_address
-        value = self.win32_api_handler.memoryRead(addr)
+        value1 = self.win32_api_handler.memoryRead(addr)
+        value2 = self.win32_api_handler.memoryRead(addr+0x1)
         while addr < max_addr :
             addr += 0x4
-            pre_value = value
-            value = self.win32_api_handler.memoryRead(addr)
-            if pre_value == 56 and value == 0 :
+            pre_value1 = value1
+            pre_value2 = value2
+            value1 = self.win32_api_handler.memoryRead(addr)
+            value2 = self.win32_api_handler.memoryRead(addr+0x1)
+            if pre_value1 == 56 and pre_value2 == 0 and value1 == 0 :
                 self.ball_y_address = addr - 0x4
                 self.ball_x_address = addr
                 break
