@@ -98,7 +98,7 @@ class Actor(object) :
         sa_2 = trajectory.pop()
         while ( sa_1 != None and sa_2 != None ) :
             # caculating reward
-            
+            reward = 0
 
             # push training data to replay memory
             torch_reward = torch.tensor([[reward]], device=self.device, dtype=torch.float)
@@ -126,7 +126,7 @@ class Actor(object) :
 
     def optimize_model(self):
         if len(self.replay_memory) < self.BATCH_SIZE:
-            return
+            return False
         transitions = self.replay_memory.sample(self.BATCH_SIZE)
         # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
         # detailed explanation). This converts batch-array of Transitions
@@ -166,4 +166,4 @@ class Actor(object) :
         for param in self.policy_net.parameters():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
-        print("optimized")
+        return True

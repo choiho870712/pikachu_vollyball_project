@@ -15,6 +15,7 @@ TARGET_UPDATE = 1
 pushed = False
 while True:
     flag = env.flag()
+    print("flag = %d"%flag)
 
     if flag == 0 or flag == 1 : # start game
         env.release_key() # release all key
@@ -25,6 +26,9 @@ while True:
         env.step(action) # step
         trajectory.push(state, action) # Store the state and action in trajectory
         pushed = False
+
+        print(state)
+        print("action = %d"%action)
 
     elif flag == 3 : # if win or loss, Store the trajectory in replay memory
         if not pushed :
@@ -44,8 +48,11 @@ while True:
     elif flag == 10 : # begin screen
         pass # need auto next game
 
+    # optimized model forever
+    if actor.optimize_model() :
+        print("optimized")
+
     # Update the target network, copying all weights and biases in DQN
-    actor.optimize_model()
     if i_episode % TARGET_UPDATE == 0:
         actor.update_model()
         i_episode = 0

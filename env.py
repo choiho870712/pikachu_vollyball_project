@@ -134,10 +134,10 @@ class Env :
         return self.win32_api_handler.memoryRead(self.flag_address)
 
     def step(self, action) :
-        print(self.action_space[action])
         self.action_space[action]()
 
 # test environment
-env = Env()
-while True :
-    print(env.state())
+if __name__ == "__main__":
+    env = Env()
+    while True :
+        print(env.state())
