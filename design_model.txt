@@ -1,6 +1,13 @@
 reward :
 	p2.score    // shift_address = 0x0e1c
 	p1.score    // shift_address = 0x0e20
+	// player bump the ball up but not over the net : 30 points
+	// player bump the ball over the net : 50 points
+	// player bump the ball and win the game : 100 points
+	// player bump the ball and loss the game : -50 points
+	// opponent bump the ball and loss the game : -100 points
+	// opponent bump the ball and win the game : 50 points
+	// discount : 0.8
 	
 flag : // shift_address = 0x0e28
 	1 : game start
@@ -14,7 +21,7 @@ state :
 	player2.x   // shift_address = 0x0eec // data_size = 4bits // init = 244 // range = 108 ~ 244
 	player1.y   // shift_address = 0x5310 // data_size = 8bits // init = 396 // range = 248 ~ 400
 	player1.x   // shift_address = 0x5314 // data_size = 4bits // init = 244 // range = 108 ~ 244
-	ball.y      // shift_address = 0x64e0 // data_size = 8bits // init = 56  // range = 20  ~ 436
+	ball.y      // shift_address = 0x64e0 // data_size = 8bits // init = 56  // range = 20  ~ 430
 	ball.x      // shift_address = 0x64e4 // data_size = 4bits // init = 0   // range = 0   ~ 252
 	player2.vy  // player2.y(0.1s after) - player2.y
 	player2.vx  // player2.x(0.1s after) - player2.x

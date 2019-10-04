@@ -93,22 +93,20 @@ class Actor(object) :
     def update_model(self) :
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def push_trajectory(self, trajectory, reward) :
+    def push_trajectory(self, trajectory) :
         sa_1 = trajectory.pop()
         sa_2 = trajectory.pop()
-        discount = 0.9
         while ( sa_1 != None and sa_2 != None ) :
+            # caculating reward
+            
+
+            # push training data to replay memory
             torch_reward = torch.tensor([[reward]], device=self.device, dtype=torch.float)
             torch_action = torch.tensor([[sa_2.action]], device=self.device, dtype=torch.long)
             torch_state_1 = torch.tensor([sa_1.state], device=self.device, dtype=torch.float)
             torch_state_2 = torch.tensor([sa_2.state], device=self.device, dtype=torch.float)
             self.replay_memory.push(torch_state_2, torch_action, torch_state_1, torch_reward)
-            reward = reward * discount
-            if reward > -0.1 and reward < 0 :
-                reward = 0.1
-                discount = 1.1
-            elif reward > 1 :
-                discount = 1
+
             sa_1 = sa_2
             sa_2 = trajectory.pop()
 

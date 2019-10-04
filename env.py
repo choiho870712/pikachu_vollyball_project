@@ -49,7 +49,6 @@ class Env :
         self.action_space = {0: c.release,1: c.left,2: c.right,3: c.up,4: c.down,5: c.p}
         self.state_space_num = 16
         self.action_space_num = 6
-        self.reset()
         print("envrionment is ready!")
         print(self.state())
 
@@ -95,11 +94,6 @@ class Env :
                 self.ball_x_address = addr
                 break
 
-    def reset(self) :
-        c.release()
-        self.player1_score = 0
-        self.player2_score = 0
-
     def release_key(self) :
         c.release()
 
@@ -130,28 +124,14 @@ class Env :
         # get current action 
         return np.concatenate((np.array(s), c.get_key_map()), axis=None)
 
-    def reward(self) :
-        p1_score = self.win32_api_handler.memoryRead(self.player1_score_address)
-        p2_score = self.win32_api_handler.memoryRead(self.player2_score_address)
-
-        # caculate reward
-        if p1_score != self.player1_score :
-            self.player1_score = p1_score
-            return 1
-        elif p2_score != self.player2_score :
-            self.player2_score = p2_score
-            return -1
-        else :
-            return 0
-
     def flag(self) :
         return self.win32_api_handler.memoryRead(self.flag_address)
 
-    def action(self, action) :
+    def step(self, action) :
         print(self.action_space[action])
         self.action_space[action]()
 
-    def step(self, action) :
-        self.action(action)
-        return self.state(), self.reward()
-
+# test environment
+env = Env()
+while True :
+    print(env.state())
