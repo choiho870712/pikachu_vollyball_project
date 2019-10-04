@@ -1,12 +1,10 @@
 reward :
 	p2.score    // shift_address = 0x0e1c
 	p1.score    // shift_address = 0x0e20
-	// player bump the ball up but not over the net : 30 points
-	// player bump the ball over the net : 50 points
-	// player bump the ball and win the game : 100 points
-	// player bump the ball and loss the game : -50 points
-	// opponent bump the ball and loss the game : -100 points
-	// opponent bump the ball and win the game : 50 points
+	// ball_y == player_y : 5 / 152 * (152 - |ball_y - player_y|)
+	// over the net : 50 points
+	// win the game : 100 points
+	// loss the game : -50 points
 	// discount : 0.8
 	
 flag : // shift_address = 0x0e28
