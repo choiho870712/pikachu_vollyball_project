@@ -49,8 +49,11 @@ class Env :
         self.action_space = {0: c.release,1: c.left,2: c.right,3: c.up,4: c.down,5: c.p}
         self.state_space_num = 16
         self.action_space_num = 6
+        self.cur_state = np.array(self.sub_state())
+        self.pre_state = self.cur_state
+        self.time_stamp = time.time()
         print("envrionment is ready!")
-        print(self.state())
+        print(self.cur_state)
 
     def caculate_addresses(self) :
         # find player1's (x,y)
@@ -103,8 +106,7 @@ class Env :
     def release_key(self) :
         c.release()
 
-    def state(self) :
-        # get players' and ball's coordinate
+    def sub_state(self) :
         s = []
         s.append(self.win32_api_handler.memoryRead(self.player2_y_address))
         s.append(self.win32_api_handler.memoryRead(self.player2_x_address))
@@ -114,21 +116,17 @@ class Env :
         s.append(self.win32_api_handler.memoryRead(self.ball_y_address))
         s[-1] += self.win32_api_handler.memoryRead(self.ball_y_address+1) << 8
         s.append(self.win32_api_handler.memoryRead(self.ball_x_address))
+        return np.array(s)
 
-        time.sleep(0.1) # wait for a while
-
-        # get players' and ball's vector
-        s.append(self.win32_api_handler.memoryRead(self.player2_y_address) - s[0])
-        s.append(self.win32_api_handler.memoryRead(self.player2_x_address) - s[1])
-        s.append(self.win32_api_handler.memoryRead(self.player1_y_address))
-        s[-1] += (self.win32_api_handler.memoryRead(self.player1_y_address+1) << 8) - s[2]
-        s.append(self.win32_api_handler.memoryRead(self.player1_x_address) - s[3])
-        s.append(self.win32_api_handler.memoryRead(self.ball_y_address))
-        s[-1] += (self.win32_api_handler.memoryRead(self.ball_y_address+1) << 8) - s[4]
-        s.append(self.win32_api_handler.memoryRead(self.ball_x_address) - s[5])
-
-        # get current action 
-        return np.concatenate((np.array(s), c.get_key_map()), axis=None)
+    def state(self) :
+        if time.time() - self.time_stamp > 0.1 :
+            self.pre_state = self.cur_state
+            self.cur_state = self.sub_state()
+            vector = self.cur_state - self.pre_state
+            self.time_stamp = time.time()
+            return np.concatenate((self.pre_state, vector, c.get_key_map()), axis=None), True
+        else :
+            return np.zeros(16), False
 
     def flag(self) :
         return self.win32_api_handler.memoryRead(self.flag_address)

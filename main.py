@@ -15,20 +15,21 @@ TARGET_UPDATE = 1
 pushed = False
 while True:
     flag = env.flag()
-    print("flag = %d"%flag)
+    # print("flag = %d"%flag)
 
     if flag == 0 or flag == 1 : # start game
         env.release_key() # release all key
 
     elif flag == 2 : # if in game, action
-        state = env.state()
-        action = actor.select_action(state) # Select an action
-        env.step(action) # step
-        trajectory.push(state, action) # Store the state and action in trajectory
-        pushed = False
+        state, got_state = env.state()
+        if got_state :
+            action = actor.select_action(state) # Select an action
+            env.step(action) # step
+            trajectory.push(state, action) # Store the state and action in trajectory
+            pushed = False
 
-        print(state)
-        print("action = %d"%action)
+            print(state)
+            print("action = %d"%action)
 
     elif flag == 3 : # if win or loss, Store the trajectory in replay memory
         if not pushed :
@@ -37,18 +38,18 @@ while True:
             pushed = True
             print("rest time")
 
-    elif flag == 4 : # optimize model when rest time
+    elif flag == 4 : # gameset
         if not pushed :
             env.release_key() # reset key
             actor.push_trajectory(trajectory)
-            i_episode += 1
             pushed = True
             print("gameset")
+            i_episode += 1
 
     elif flag == 10 : # begin screen
         pass # need auto next game
 
-    # optimized model forever
+    # optimize model forever
     if actor.optimize_model() :
         print("optimized")
 
