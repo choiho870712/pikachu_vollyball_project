@@ -74,7 +74,7 @@ class Env :
 
         # find player2's (x,y) , score , flag
         addr -= addr & 0xffff # mask
-        max_addr = addr + 0x10000
+        max_addr = addr + 0x1000
         value = self.win32_api_handler.memoryRead(addr)
         while addr < max_addr :
             addr += 0x4
@@ -84,21 +84,17 @@ class Env :
                 self.player2_x_address = addr
                 self.player2_y_address = self.player2_x_address - 0x4
                 self.flag_address = self.player2_y_address - 0xC0
-                self.player1_score_address = self.flag_address - 0x8
-                self.player2_score_address = self.player1_score_address - 0x4
                 break
 
         # find ball's (x,y)
-        addr = self.player1_x_address
-        value1 = self.win32_api_handler.memoryRead(addr)
-        value2 = self.win32_api_handler.memoryRead(addr+0x1)
+        addr = max_addr + 0x5000
+        max_addr = addr + 0x1000
+        value = self.win32_api_handler.memoryRead(addr)
         while addr < max_addr :
             addr += 0x4
-            pre_value1 = value1
-            pre_value2 = value2
-            value1 = self.win32_api_handler.memoryRead(addr)
-            value2 = self.win32_api_handler.memoryRead(addr+0x1)
-            if pre_value1 == 56 and pre_value2 == 0 and value1 == 0 :
+            pre_value = value
+            value = self.win32_api_handler.memoryRead(addr)
+            if pre_value == 56 and value == 0 :
                 self.ball_y_address = addr - 0x4
                 self.ball_x_address = addr
                 break
@@ -138,4 +134,6 @@ class Env :
 if __name__ == "__main__":
     env = Env()
     while True :
-        print(env.state())
+        state, got_state = env.state()
+        if got_state :
+            print(state)
