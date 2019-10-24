@@ -33,9 +33,45 @@ class win32_api :
         self.bytesRead = c_ulong(0)
         self.processHandle = self.OpenProcess(0xFFF, False, pid)
 
-    def memoryRead(self, address) :
+    def read_word(self, address) :
+        value = 0
+        self.ReadProcessMemory(self.processHandle, address + 0x3, self.buffer, self.bufferSize, byref(self.bytesRead))
+        value |= int.from_bytes(self.buffer.value, byteorder='little')
+        self.ReadProcessMemory(self.processHandle, address + 0x2, self.buffer, self.bufferSize, byref(self.bytesRead))
+        value <<= 8
+        value |= int.from_bytes(self.buffer.value, byteorder='little')
+        self.ReadProcessMemory(self.processHandle, address + 0x1, self.buffer, self.bufferSize, byref(self.bytesRead))
+        value <<= 8
+        value |= int.from_bytes(self.buffer.value, byteorder='little')
+        self.ReadProcessMemory(self.processHandle, address, self.buffer, self.bufferSize, byref(self.bytesRead))
+        value <<= 8
+        value |= int.from_bytes(self.buffer.value, byteorder='little')
+        return value
+
+    def read_byte(self, address) :
         self.ReadProcessMemory(self.processHandle, address, self.buffer, self.bufferSize, byref(self.bytesRead))
         return int.from_bytes(self.buffer.value, byteorder='little')
+
+    def search_addresses(self, low_address, high_address, target_value1, target_value2) :
+        addr = low_address
+        value = self.read_word(addr)
+        while addr <= high_address :
+            addr += 0x4
+            pre_value = value
+            value = self.read_word(addr)
+            if pre_value == target_value1 and value == target_value2 :
+                return addr - 0x4
+
+        return 0
+
+    def print_addresses_value(self, low_address, high_address) :
+        s = []
+        addr = low_address
+        while addr <= high_address :
+            s.append(self.read_word(addr))
+            addr += 0x4
+
+        print(s)
 
 import control as c
 import numpy as np
@@ -54,64 +90,32 @@ class Env :
         self.time_stamp = time.time()
         print("envrionment is ready!")
         print(self.cur_state)
+        print("flag = %d"%self.flag())
 
     def caculate_addresses(self) :
-        # find player1's (x,y)
-        addr = 0x2000000
-        max_addr = 0x5000000
-        value1 = self.win32_api_handler.memoryRead(addr)
-        value2 = self.win32_api_handler.memoryRead(addr+0x1)
-        while addr < max_addr :
-            addr += 0x4
-            pre_value1 = value1
-            pre_value2 = value2
-            value1 = self.win32_api_handler.memoryRead(addr)
-            value2 = self.win32_api_handler.memoryRead(addr+0x1)
-            if pre_value1 == 140 and pre_value2 == 1 and value1 == 244 :
-                self.player1_y_address = addr - 0x4
-                self.player1_x_address = addr
-                break
-
-        # find player2's (x,y) , score , flag
-        addr -= addr & 0xffff # mask
-        max_addr = addr + 0x1000
-        value = self.win32_api_handler.memoryRead(addr)
-        while addr < max_addr :
-            addr += 0x4
-            pre_value = value
-            value = self.win32_api_handler.memoryRead(addr)
-            if pre_value == 36 and value == 244 :
-                self.player2_x_address = addr
-                self.player2_y_address = self.player2_x_address - 0x4
-                self.flag_address = self.player2_y_address - 0xC0
-                break
-
-        # find ball's (x,y)
-        addr = max_addr + 0x5000
-        max_addr = addr + 0x1000
-        value = self.win32_api_handler.memoryRead(addr)
-        while addr < max_addr :
-            addr += 0x4
-            pre_value = value
-            value = self.win32_api_handler.memoryRead(addr)
-            if pre_value == 56 and value == 0 :
-                self.ball_y_address = addr - 0x4
-                self.ball_x_address = addr
-                break
+        self.player1_y_address = self.win32_api_handler.search_addresses(0x2000000, 0x5000000, 396, 244)
+        self.player1_x_address = self.player1_y_address + 0x4
+        self.base = self.player1_y_address - (self.player1_y_address & 0xffff)
+        self.player2_y_address = self.win32_api_handler.search_addresses(self.base, self.base + 0xffff, 36, 244)
+        self.player2_x_address = self.player2_y_address + 0x4
+        self.ball_y_address = self.win32_api_handler.search_addresses(self.base + 0x6000, self.base + 0xffff, 56, 0)
+        self.ball_x_address = self.ball_y_address + 0x4
+        self.max_score_address = self.win32_api_handler.search_addresses(self.base + 0xe00, self.base + 0xf00, 1, 15)
+        self.flag_address = self.win32_api_handler.search_addresses(self.base + 0xe00, self.base + 0xf00, 0, 15) - 0x4
+        self.player1_score_address = self.flag_address - 0x8
+        self.player2_score_address = self.flag_address - 0xc
 
     def release_key(self) :
         c.release()
 
     def sub_state(self) :
         s = []
-        s.append(self.win32_api_handler.memoryRead(self.player2_y_address))
-        s.append(self.win32_api_handler.memoryRead(self.player2_x_address))
-        s.append(self.win32_api_handler.memoryRead(self.player1_y_address))
-        s[-1] += self.win32_api_handler.memoryRead(self.player1_y_address+1) << 8
-        s.append(self.win32_api_handler.memoryRead(self.player1_x_address))
-        s.append(self.win32_api_handler.memoryRead(self.ball_y_address))
-        s[-1] += self.win32_api_handler.memoryRead(self.ball_y_address+1) << 8
-        s.append(self.win32_api_handler.memoryRead(self.ball_x_address))
+        s.append(self.win32_api_handler.read_byte(self.player2_y_address))
+        s.append(self.win32_api_handler.read_byte(self.player2_x_address))
+        s.append(self.win32_api_handler.read_word(self.player1_y_address))
+        s.append(self.win32_api_handler.read_byte(self.player1_x_address))
+        s.append(self.win32_api_handler.read_word(self.ball_y_address))
+        s.append(self.win32_api_handler.read_byte(self.ball_x_address))
         return np.array(s)
 
     def state(self) :
@@ -125,7 +129,7 @@ class Env :
             return np.zeros(16), False
 
     def flag(self) :
-        return self.win32_api_handler.memoryRead(self.flag_address)
+        return self.win32_api_handler.read_byte(self.flag_address)
 
     def step(self, action) :
         self.action_space[action]()
@@ -134,6 +138,13 @@ class Env :
 if __name__ == "__main__":
     env = Env()
     while True :
+        # # test flag
+        # print(env.flag())
+
+        # test state
         state, got_state = env.state()
         if got_state :
             print(state)
+
+        # # chech memory
+        # env.win32_api_handler.print_addresses_value(env.base + 0xd00, env.base+0xfff)
