@@ -1,0 +1,14 @@
+how to use scanmem :
+
+pidof volleyball
+sudo scanmem 'yourpid'
+
+then google 'scanmem tutorial'
+
+
+player1.y 396 5a53a8
+player1.x 244 5a53ac
+player2.y 36  5a0dc0
+player2.x 244 5a0dc4
+ball.y    56  5a6578
+ball.x    0   5a657c
