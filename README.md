@@ -12,7 +12,14 @@ step4. 確認第一個 state 是否為 [36,244,296,244,56,0,0,0,0,0,0,0,0,0,0,0]
 
 step5. 取消暫停開始打球
 
-p.s. linux version is in linux folder
+p.s. step3 in linux version
+
+'''
+xhost +
+sudo bash
+echo 0 > /proc/sys/kernel/yama/ptrace_scope
+python env.py
+'''
 
 # strategy
 
