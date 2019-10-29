@@ -100,10 +100,8 @@ class Env :
         self.player2_x_address = self.player2_y_address + 0x4
         self.ball_y_address = self.win32_api_handler.search_addresses(self.base + 0x6000, self.base + 0xffff, 56, 0)
         self.ball_x_address = self.ball_y_address + 0x4
-        self.max_score_address = self.win32_api_handler.search_addresses(self.base + 0xe00, self.base + 0xf00, 1, 15)
-        self.flag_address = self.win32_api_handler.search_addresses(self.base + 0xe00, self.base + 0xf00, 0, 15) - 0x4
-        self.player1_score_address = self.flag_address - 0x8
-        self.player2_score_address = self.flag_address - 0xc
+        # self.flag_address = self.win32_api_handler.search_addresses(self.base + 0xe00, self.base + 0xf00, 0, 15) - 0x4
+        self.flag_address = self.player2_y_address - 0xc0
 
     def release_key(self) :
         c.release()
