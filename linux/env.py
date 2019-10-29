@@ -26,18 +26,18 @@ from struct import unpack
 class memory_reader :
 
     def __init__(self, pid) :
-        self.tracer = PtraceProcess(PtraceDebugger(), pid, False)
+        self.tracer = PtraceProcess(PtraceDebugger(), pid, True)
 
-    def read_int4(self, address) :
-        return unpack("I", self.tracer.readBytes(address, 4))[0]
+    def read_bytes(self, address, size = 1) :
+        return int.from_bytes(self.tracer.readBytes(address, size), byteorder='little')
 
     def search_address(self, low_address, high_address, target_value1, target_value2) :
         addr = low_address
-        value = self.read_int4(addr)
-        while addr <= high_address :
+        value = self.read_bytes(addr, 4)
+        while addr < high_address :
             addr += 0x4
             pre_value = value
-            value = self.read_int4(addr)
+            value = self.read_bytes(addr, 4)
             if pre_value == target_value1 and value == target_value2 :
                 return addr - 0x4
 
@@ -79,7 +79,8 @@ class Env :
         self.player2_x_address = self.player2_y_address + 0x4
         self.ball_y_address = self.reader.search_address(self.base + 0x6000, self.base + 0xffff, 56, 0)
         self.ball_x_address = self.ball_y_address + 0x4
-        self.flag_address = self.reader.search_address(self.base + 0xe00, self.base + 0xf00, 0, 15) - 0x4
+        # self.flag_address = self.reader.search_address(self.base + 0xe00, self.base + 0xf00, 0, 15) - 0x4
+        self.flag_address = self.player2_y_address -0xc0      
 
     def release_key(self) :
         c.release()
@@ -87,12 +88,12 @@ class Env :
     def sub_state(self) :
         # sub_state = [p2.y, p2.x, p1.y, p1.x, b.y, b.x]
         s = []
-        s.append(self.reader.read_int4(self.player2_y_address))
-        s.append(self.reader.read_int4(self.player2_x_address))
-        s.append(self.reader.read_int4(self.player1_y_address))
-        s.append(self.reader.read_int4(self.player1_x_address))
-        s.append(self.reader.read_int4(self.ball_y_address))
-        s.append(self.reader.read_int4(self.ball_x_address))
+        s.append(self.reader.read_bytes(self.player2_y_address))
+        s.append(self.reader.read_bytes(self.player2_x_address))
+        s.append(self.reader.read_bytes(self.player1_y_address,2))
+        s.append(self.reader.read_bytes(self.player1_x_address))
+        s.append(self.reader.read_bytes(self.ball_y_address))
+        s.append(self.reader.read_bytes(self.ball_x_address))
         return np.array(s)
 
     def state(self) :
@@ -111,7 +112,7 @@ class Env :
 
     def flag(self) :
         # 0 : a game start,  1 : ball start, 2 : playing ball, 3 : ball end, 4 : game set, 10 : begin screen
-        return self.reader.read_int4(self.flag_address)
+        return self.reader.read_bytes(self.flag_address)
 
     def step(self, action) :
         # action = [release, left, right, up, down, power]
