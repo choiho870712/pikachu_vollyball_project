@@ -91,8 +91,6 @@ class Env :
         self.score1 = 0
         self.score2 = 0
         print("envrionment is ready!")
-        print(self.cur_state)
-        print("flag = %d"%self.flag())
 
     def caculate_addresses(self) :
         self.player1_y_address = self.win32_api_handler.search_addresses(0x2000000, 0x5000000, 396, 244)

@@ -93,7 +93,8 @@ class Actor(object) :
     def update_model(self) :
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def push_trajectory(self, trajectory) :
+    def push_trajectory(self, trajectory, score) :
+        print("score = %d"%score)
         sa_1 = trajectory.pop()
         sa_2 = trajectory.pop()
         while ( sa_1 != None and sa_2 != None ) :

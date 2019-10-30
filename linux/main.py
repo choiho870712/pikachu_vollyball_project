@@ -34,14 +34,14 @@ while True:
     elif flag == 3 : # if win or loss, Store the trajectory in replay memory
         if not pushed :
             env.release_key() # release all key
-            actor.push_trajectory(trajectory)
+            actor.push_trajectory(trajectory, env.score())
             pushed = True
             print("rest time")
 
     elif flag == 4 : # gameset
         if not pushed :
             env.release_key() # reset key
-            actor.push_trajectory(trajectory)
+            actor.push_trajectory(trajectory, env.score())
             pushed = True
             print("gameset")
             i_episode += 1
