@@ -88,6 +88,8 @@ class Env :
         self.cur_state = np.array(self.sub_state())
         self.pre_state = self.cur_state
         self.time_stamp = time.time()
+        self.score1 = 0
+        self.score2 = 0
         print("envrionment is ready!")
         print(self.cur_state)
         print("flag = %d"%self.flag())
@@ -102,7 +104,8 @@ class Env :
         self.ball_x_address = self.ball_y_address + 0x4
         # self.flag_address = self.win32_api_handler.search_addresses(self.base + 0xe00, self.base + 0xf00, 0, 15) - 0x4
         self.flag_address = self.player2_y_address - 0xc0
-
+        self.player1_score_address = self.flag_address - 0x8
+        self.player2_score_address = self.player1_score_address - 0x4
     def release_key(self) :
         c.release()
 
@@ -131,6 +134,21 @@ class Env :
 
     def step(self, action) :
         self.action_space[action]()
+
+    def score(self) :
+        score1 = self.win32_api_handler.read_byte(self.player1_score_address)
+        score2 = self.win32_api_handler.read_byte(self.player2_score_address)
+
+        if self.score1 != score1 :
+            self.score1 = score1
+            return 1
+        elif self.score2 != score2 :
+            self.score2 = score2
+            return -1
+        else :
+            return 0
+
+
 
 # test environment
 if __name__ == "__main__":
