@@ -94,12 +94,25 @@ class Actor(object) :
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
     def push_trajectory(self, trajectory, score) :
-        print("score = %d"%score)
+        # print("score = %d"%score)
         sa_1 = trajectory.pop()
         sa_2 = trajectory.pop()
+        reward_temp = 100
         while ( sa_1 != None and sa_2 != None ) :
             # caculating reward
-            reward = 0
+            if ((sa_1.state[4] - 216) > 0) :
+                reward_closedball = abs(sa_1.state[2] - sa_1.state[4]) / 36
+            else :
+                reward_closedball = 0
+            
+            if ( score == 1 ) :
+                reward = reward_temp + reward_closedball
+                reward_temp -= 20
+            elif ( score == -1 ) :
+                reward = -reward_temp + reward_closedball
+                reward_temp -= 20
+            else :
+                print("error flag !")
 
             # push training data to replay memory
             torch_reward = torch.tensor([[reward]], device=self.device, dtype=torch.float)
