@@ -13,6 +13,9 @@ trajectory = Trajectory(10000)
 i_episode = 0
 TARGET_UPDATE = 1
 pushed = False
+
+time_stamp = time.time()
+stamped = False
 while True:
     flag = env.flag()
     # print("flag = %d"%flag)
@@ -47,7 +50,7 @@ while True:
             i_episode += 1
 
     elif flag == 10 : # begin screen
-        pass # need auto next game
+        pass
 
     # optimize model forever
     if actor.optimize_model() :
