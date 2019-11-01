@@ -131,9 +131,11 @@ class Env :
 
         if self.score1 != score1 :
             self.score1 = score1
+            print("win")
             return 1
         elif self.score2 != score2 :
             self.score2 = score2
+            print("loss")
             return -1
         else :
             return 0

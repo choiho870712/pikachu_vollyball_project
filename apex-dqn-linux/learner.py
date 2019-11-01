@@ -69,7 +69,7 @@ class Learner():
             os.remove(file)
             print('Memory loaded from ', file)
         except :
-            print("=> Learner: no memory found at ", file)
+            pass
 
     def optimize_model(self):
         if len(self.replay_memory) < self.BATCH_SIZE:

@@ -82,9 +82,9 @@ class Actor:
     def reward_function(self, trajectory, score) :
         sa_1 = trajectory.pop()
         sa_2 = trajectory.pop()
+        discount = 0.8
+        reward = score
         while ( sa_1 != None and sa_2 != None ) :
-            # caculating reward
-            reward = 0
 
             # push training data to replay memory
             torch_reward = torch.tensor([[reward]], device=self.device, dtype=torch.float)
@@ -93,6 +93,7 @@ class Actor:
             torch_state_2 = torch.tensor([sa_2.state], device=self.device, dtype=torch.float)
             self.replay_memory.push(torch_state_2, torch_action, torch_state_1, torch_reward)
 
+            reward *= discount
             sa_1 = sa_2
             sa_2 = trajectory.pop()
 
@@ -155,7 +156,6 @@ class Actor:
                 if not pushed : # if win or loss, Store the trajectory in replay memory
                     self.env.init()
                     self.reward_function(self.trajectory, self.env.score())
-                    print("rest time")
                     pushed = True
             elif flag == 4 :
                 if not pushed : # if win or loss, Store the trajectory in replay memory
