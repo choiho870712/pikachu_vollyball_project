@@ -5,7 +5,7 @@ sudo bash
 echo 0 > /proc/sys/kernel/yama/ptrace_scope
 ```
 
-# Run learner
+# run learner
 assume there are 2 actors
 ```
 python learner --actor-num 2
@@ -19,17 +19,21 @@ sudo lsattr log/
 sudo chmod -R 777 log/
 ```
 
-# Run actor
+# run actor
 copy learner's model id and run 1st actor
 ```
 Xvfb :1 &
 export DISPLAY=:1
 DISPLAY=:1 python actor.py --simnum 0 --load-model 191101175440
 ```
-
 copy learner's model id and run 2nd actor
 ```
 Xvfb :2 &
 export DISPLAY=:2
 DISPLAY=:2 python actor.py --simnum 1 --load-model 191101175440
+```
+
+# test
+```
+python actor.py --load-model 191101175440
 ```
