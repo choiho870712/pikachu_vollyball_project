@@ -1,16 +1,16 @@
 error message :
 
-case1 : Xlib.error.DisplayConnectionError: Can't connect to display ":0": b'No protocol specified\n'
+case1 : Xlib.error.DisplayConnectionError
 solve : 
 	xhost +
-	run again your program
 
-case2 : ptrace.error.PtraceError: ptrace(cmd=16, pid=2993, 0, 0) error #1: Operation not permitted
+case2 : ptrace.error.PtraceError
 solve :
 	sudo bash
 	echo 0 > /proc/sys/kernel/yama/ptrace_scope
-	run again your program
 
-case3 : 
-	set the value : /etc/sysctl.d/10-ptrace.conf
-	kernel.yama.ptrace_scope = 0 
+case3 : mkdir permission denied
+solve : 
+	sudo chattr log/
+	sudo lsattr log/
+	sudo chmod -R 777 log/

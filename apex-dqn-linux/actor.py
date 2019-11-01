@@ -10,14 +10,14 @@ import numpy as np
 import torch
 from tensorboardX import SummaryWriter
 import os
-import gc
+from pynput.keyboard import Key, Controller
+import subprocess
 
 parser = argparse.ArgumentParser(description='parser')
 parser.add_argument('--simnum', type=int, default=0, metavar='N')
 parser.add_argument('--load-model', type=str, default='000000000000', metavar='N', help='load previous model')
 parser.add_argument('--log-directory', type=str, default='log/', metavar='N', help='log directory')
 args = parser.parse_args()
-torch.manual_seed(1)
 
 class Actor:
     def __init__(self):
@@ -34,48 +34,48 @@ class Actor:
         self.trajectory = Trajectory(3000)
         self.replay_memory = ReplayMemory(3000)
         self.policy_net = DQN().to(self.device)
+        self.keyboard = Controller()
 
     def load_model(self):
-        if os.path.isfile(self.log + 'model.pt'):
+        file = self.log + 'model.pt'
+        if os.path.isfile(file):
             if self.device == 'cpu':
-                model_dict = torch.load(self.log + 'model.pt', map_location=lambda storage, loc: storage)
+                model_dict = torch.load(file, map_location=lambda storage, loc: storage)
             else:
-                model_dict = torch.load(self.log + 'model.pt')
+                model_dict = torch.load(file)
             self.policy_net.load_state_dict(model_dict['state_dict'])
-            print('Actor {}: Model loaded from '.format(self.simnum), self.log + 'model.pt')
+            print('Actor {}: Model loaded from '.format(self.simnum), file)
 
         else:
-            print("Actor {}: no model found at '{}'".format(self.simnum, self.log + 'model.pt'))
+            print("Actor {}: no model found at '{}'".format(self.simnum, file))
 
     def save_checkpoint(self, idx):
+        file = self.log + 'checkpoint{}.pt'.format(self.simnum)
         checkpoint = {'simnum': self.simnum,
                       'epoch': idx}
-        torch.save(checkpoint, self.log + 'checkpoint{}.pt'.format(self.simnum))
-        print('Actor {}: Checkpoint saved in '.format(self.simnum), self.log + 'checkpoint{}.pt'.format(self.simnum))
+        torch.save(checkpoint, file)
+        print('Actor {}: Checkpoint saved in '.format(self.simnum), file)
 
     def load_checkpoint(self):
-        if os.path.isfile(self.log + 'checkpoint{}.pt'.format(self.simnum)):
-            checkpoint = torch.load(self.log + 'checkpoint{}.pt'.format(self.simnum))
+        file = self.log + 'checkpoint{}.pt'.format(self.simnum)
+        if os.path.isfile(file):
+            checkpoint = torch.load(file)
             self.simnum = checkpoint['simnum']
-            print("Actor {}: loaded checkpoint ".format(self.simnum), '(epoch {})'.format(checkpoint['epoch']), self.log + 'checkpoint{}.pt'.format(self.simnum))
+            print("Actor {}: loaded checkpoint ".format(self.simnum), '(epoch {})'.format(checkpoint['epoch']), file)
             return checkpoint['epoch']
         else:
-            print("Actor {}: no checkpoint found at ".format(self.simnum), self.log + 'checkpoint{}.pt'.format(self.simnum))
+            print("Actor {}: no checkpoint found at ".format(self.simnum), file)
             return 0
 
     def save_memory(self):
-        if os.path.isfile(self.log + 'memory.pt'):
-            try:
-                memory = torch.load(self.log + 'memory{}.pt'.format(self.simnum))
-                memory.extend(self.replay_memory)
-            except:
-                time.sleep(10)
-                memory = torch.load(self.log + 'memory{}.pt'.format(self.simnum))
-                memory.extend(self.replay_memory)
+        file = self.log + 'memory{}.pt'.format(self.simnum)
+        if os.path.isfile(file):
+            memory = torch.load(file)
+            memory.extend(self.replay_memory)
         else:
             memory = self.replay_memory
 
-        torch.save(memory, self.log + 'memory{}.pt'.format(self.simnum))
+        torch.save(memory, file)
         self.replay_memory.clear()
         print('Actor {}: Memory saved in '.format(self.simnum), self.log + 'memory{}.pt'.format(self.simnum))
 
@@ -109,44 +109,68 @@ class Actor:
         else:
             return random.randrange(self.n_actions)
 
+    def create_environment(self) :
+        process = subprocess.Popen(["wine","volleyball.exe"])
+        self.auto_start_new_game()
+        self.env = Env(process.pid)
+
+    def auto_start_new_game(self) :
+        time.sleep(3)                      # wait for game set animation
+        # skip game loading animation
+        self.keyboard.press(Key.enter)     # press enter
+        time.sleep(0.2)                    # wait for enter trigger the game
+        self.keyboard.release(Key.enter)   # press enter
+        time.sleep(0.5)                    # wait for game loading menu
+        # skip game loading menu animation
+        self.keyboard.press(Key.enter)     # press enter
+        time.sleep(0.2)                    # wait for enter trigger the game
+        self.keyboard.release(Key.enter)   # press enter
+        time.sleep(0.5)                    # wait for enter gap
+        # choose player1 game
+        self.keyboard.press(Key.enter)     # press enter
+        time.sleep(0.2)                    # wait for enter trigger the game
+        self.keyboard.release(Key.enter)   # press enter
+        time.sleep(0.5)                    # wait for game loading player1 game
+
     def main(self):
+        self.create_environment()
         test_epoch = self.start_epoch
         pushed = False
         while True:
             # flag        // 0 : a game start,  1 : ball start, 2 : playing ball, 3 : ball end, 4 : game set, 10 : begin screen
-            flag = env.flag()
+            try :
+                flag = self.env.flag()
+            except :
+                self.create_environment()
 
             if flag == 2 :
-                state, got_state = env.state()
+                state, got_state = self.env.state()
                 if got_state :
                     action = self.select_action(state)
-                    env.step(action)
+                    self.env.step(action)
                     self.trajectory.push(state, action) # Store the state and action in trajectory
                     print(state)
                     pushed = False
             elif flag == 3 :
                 if not pushed : # if win or loss, Store the trajectory in replay memory
-                    env.release_key()
-                    self.reward_function(self.trajectory, env.score())
-                    gc.collect()
+                    self.env.init()
+                    self.reward_function(self.trajectory, self.env.score())
                     print("rest time")
                     pushed = True
             elif flag == 4 :
                 if not pushed : # if win or loss, Store the trajectory in replay memory
-                    env.release_key()
-                    self.reward_function(self.trajectory, env.score())
+                    self.env.init()
+                    self.reward_function(self.trajectory, self.env.score())
                     self.save_memory()
                     self.load_model()
                     test_epoch += 1
-                    self.writer.add_scalar('total_reward', env.final_score(), test_epoch)
+                    self.writer.add_scalar('total_reward', self.env.final_score(), test_epoch)
                     self.save_checkpoint(test_epoch)
-                    gc.collect()
                     print("gameset")
                     pushed = True
             elif flag == 10 :
-                pass                          # new cloud add here
+                self.auto_start_new_game()
 
 if __name__ == "__main__":
-    env = Env()
     actor = Actor()
     actor.main()

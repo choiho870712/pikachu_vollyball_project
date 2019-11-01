@@ -43,19 +43,20 @@ class memory_reader :
 
         return 0
 
+import time
 import control as c
 import numpy as np
-import time
 
 class Env :
 
-    def __init__(self) :
-        self.reader = memory_reader(findProcessIdByName('volleyball'))
+    def __init__(self, pid) :
+        # self.reader = memory_reader(findProcessIdByName('volleyball'))
+        self.reader = memory_reader(pid)
         self.caculate_addresses()
         self.action_space = {0: c.release,1: c.left,2: c.right,3: c.up,4: c.down,5: c.p}
         self.state_space_num = 16
         self.action_space_num = 6
-        self.cur_state = np.array(self.sub_state())
+        self.cur_state = np.array([ 36, 244, 396, 244, 56, 0 ])
         self.pre_state = self.cur_state
         self.time_stamp = time.time()
         self.score1 = 0
@@ -86,8 +87,10 @@ class Env :
         self.player1_score_address = self.flag_address - 0x8
         self.player2_score_address = self.player1_score_address - 0x4   
 
-    def release_key(self) :
+    def init(self) :
         c.release()
+        self.cur_state = np.array([ 36, 244, 396, 244, 56, 0 ])
+        self.pre_state = self.cur_state
 
     def sub_state(self) :
         # sub_state = [p2.y, p2.x, p1.y, p1.x, b.y, b.x]
