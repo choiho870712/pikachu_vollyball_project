@@ -19,7 +19,7 @@ state :
 	player2.x   // shift_address = 0x0eec // data_size = 4bits // init = 244 // range = 108 ~ 244
 	player1.y   // shift_address = 0x5310 // data_size = 8bits // init = 396 // range = 248 ~ 400
 	player1.x   // shift_address = 0x5314 // data_size = 4bits // init = 244 // range = 108 ~ 244
-	ball.y      // shift_address = 0x64e0 // data_size = 8bits // init = 56  // range = 20  ~ 430
+	ball.y      // shift_address = 0x64e0 // data_size = 8bits // init = 56  // range = 0   ~ 432
 	ball.x      // shift_address = 0x64e4 // data_size = 4bits // init = 0   // range = 0   ~ 252
 	player2.vy  // player2.y(0.1s after) - player2.y
 	player2.vx  // player2.x(0.1s after) - player2.x

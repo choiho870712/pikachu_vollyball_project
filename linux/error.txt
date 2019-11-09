@@ -14,3 +14,14 @@ solve :
 	sudo chattr log/
 	sudo lsattr log/
 	sudo chmod -R 777 log/
+
+python learner.py --actor-num 10
+
+Xvfb :10 &
+export DISPLAY=:10
+DISPLAY=:10 python actor.py --simnum 9 --load-model 191109173152
+
+ps aux 
+kill -9 pid
+
+export WINEDEBUG=-all

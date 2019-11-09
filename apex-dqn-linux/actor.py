@@ -31,8 +31,8 @@ class Actor:
         self.EPS_START = 0.9
         self.EPS_END = 0.05
         self.EPS_DECAY = 200
-        self.trajectory = Trajectory(3000)
-        self.replay_memory = ReplayMemory(3000)
+        self.trajectory = Trajectory(300)
+        self.replay_memory = ReplayMemory(1000)
         self.policy_net = DQN().to(self.device)
         self.keyboard = Controller()
 
@@ -76,26 +76,57 @@ class Actor:
             memory = self.replay_memory
 
         torch.save(memory, file)
+        print('Actor {}: Memory saved in '.format(self.simnum), file + ' size = {}'.format(len(self.replay_memory)))
         self.replay_memory.clear()
-        print('Actor {}: Memory saved in '.format(self.simnum), self.log + 'memory{}.pt'.format(self.simnum))
+
+    def normalization(self, state) :
+        normal_state = []
+        normal_state.append((state[0] - 108) / 76)
+        normal_state.append((state[1] - 176) / 68)
+        normal_state.append((state[2] - 324) / 76)
+        normal_state.append((state[3] - 176) / 68)
+        normal_state.append((state[4] - 216) / 216)
+        normal_state.append((state[5] - 126) / 126)
+        normal_state.append(state[6] / 24)
+        normal_state.append(state[7] / 45)
+        normal_state.append(state[8] / 24)
+        normal_state.append(state[9] / 45)
+        normal_state.append(state[10]/ 60)
+        normal_state.append(state[11]/ 90)
+        normal_state.append(state[12] * 2 - 1)
+        normal_state.append(state[13] * 2 - 1)
+        normal_state.append(state[14] * 2 - 1)
+        normal_state.append(state[15] * 2 - 1)
+        return np.array(normal_state)
+
+    def push_to_replay_memory(self, state2, action, state1, reward ) :
+        # push training data to replay memory
+        torch_reward = torch.tensor([[reward]], device=self.device, dtype=torch.float)
+        torch_action = torch.tensor([[action]], device=self.device, dtype=torch.long)
+        torch_state_1 = torch.tensor([state1], device=self.device, dtype=torch.float)
+        torch_state_2 = torch.tensor([state2], device=self.device, dtype=torch.float)
+        self.replay_memory.push(torch_state_2, torch_action, torch_state_1, torch_reward)
 
     def reward_function(self, trajectory, score) :
         sa_1 = trajectory.pop()
         sa_2 = trajectory.pop()
+        normal_state_1 = self.normalization(sa_1.state)
+        normal_state_2 = self.normalization(sa_2.state)
         discount = 0.8
         reward = score
-        while ( sa_1 != None and sa_2 != None ) :
+        while True :
+            self.push_to_replay_memory(normal_state_2, sa_2.action, normal_state_1, reward)
 
-            # push training data to replay memory
-            torch_reward = torch.tensor([[reward]], device=self.device, dtype=torch.float)
-            torch_action = torch.tensor([[sa_2.action]], device=self.device, dtype=torch.long)
-            torch_state_1 = torch.tensor([sa_1.state], device=self.device, dtype=torch.float)
-            torch_state_2 = torch.tensor([sa_2.state], device=self.device, dtype=torch.float)
-            self.replay_memory.push(torch_state_2, torch_action, torch_state_1, torch_reward)
-
-            reward *= discount
+            # pop data from trajectory stack
             sa_1 = sa_2
             sa_2 = trajectory.pop()
+
+            if sa_2 != None and abs(reward) > 0.1 :
+                reward *= discount
+                normal_state_1 = normal_state_2
+                normal_state_2 = self.normalization(sa_2.state)
+            else :
+                break
 
         self.trajectory.clear()
 
@@ -111,7 +142,7 @@ class Actor:
             return random.randrange(self.n_actions)
 
     def create_environment(self) :
-        process = subprocess.Popen(["wine","volleyball.exe"])
+        process = subprocess.Popen(["wine","volleyball.exe", "WINEDEBUG=-all"])
         self.auto_start_new_game()
         self.env = Env(process.pid)
 
@@ -150,7 +181,6 @@ class Actor:
                     action = self.select_action(state)
                     self.env.step(action)
                     self.trajectory.push(state, action) # Store the state and action in trajectory
-                    print(state)
                     pushed = False
             elif flag == 3 :
                 if not pushed : # if win or loss, Store the trajectory in replay memory
@@ -161,12 +191,11 @@ class Actor:
                 if not pushed : # if win or loss, Store the trajectory in replay memory
                     self.env.init()
                     self.reward_function(self.trajectory, self.env.score())
-                    self.save_memory()
-                    self.load_model()
                     test_epoch += 1
                     self.writer.add_scalar('total_reward', self.env.final_score(), test_epoch)
+                    self.save_memory()
+                    self.load_model()
                     self.save_checkpoint(test_epoch)
-                    print("gameset")
                     pushed = True
             elif flag == 10 :
                 self.auto_start_new_game()

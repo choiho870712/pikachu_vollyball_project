@@ -135,13 +135,14 @@ class Env :
             return 1
         elif self.score2 != score2 :
             self.score2 = score2
-            print("loss")
+            print("lose")
             return -1
         else :
             return 0
 
     def final_score(self) : 
         score = self.score1 - self.score2
+        print("final score is %d:%d"%(self.score2, self.score1))
         self.score1 = 0
         self.score2 = 0
         return score

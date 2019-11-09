@@ -13,6 +13,7 @@ import numpy as np
 import os
 
 parser = argparse.ArgumentParser(description='parser')
+parser.add_argument('--lr', type=float, default=1e-4, metavar='N', help='learning rate (default: 1e-4)')
 parser.add_argument('--actor-num', type=int, default=10, metavar='N')
 parser.add_argument('--load-model', type=str, default='000000000000', metavar='N',help='load previous model')
 parser.add_argument('--log-directory', type=str, default='log/', metavar='N',help='log directory')
@@ -23,6 +24,7 @@ class Learner():
         self.device = self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.BATCH_SIZE = 256
         self.GAMMA = 0.999
+        self.lr = args.lr
         self.log_interval = 100
         self.update_cycle = 1000
         self.actor_num = args.actor_num
@@ -48,8 +50,9 @@ class Learner():
             self.log = args.log_directory + datetime.datetime.now().strftime("%y%m%d%H%M%S") + '/'
         self.policy_net = DQN().to(self.device)
         self.target_net = DQN().to(self.device)
+        self.policy_net.train()
         self.target_net.eval()
-        self.optimizer = optim.RMSprop(self.policy_net.parameters())
+        self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.lr)
         self.start_epoch = 0
         file = self.log + 'model.pt'
         if os.path.isfile(file):
@@ -67,7 +70,7 @@ class Learner():
             self.replay_memory.extend(memory)
             memory.clear()
             os.remove(file)
-            print('Memory loaded from ', file)
+            print('Memory loaded from ', file, 'size = {}'.format(len(self.replay_memory)))
         except :
             pass
 
@@ -81,7 +84,8 @@ class Learner():
         action_batch = torch.cat(batch.action)
         reward_batch = torch.cat(batch.reward)
         state_action_values = self.policy_net(state_batch).gather(1, action_batch)
-        next_state_values = self.target_net(next_states).max(1)[0].detach().unsqueeze(1)
+        # next_state_values = self.target_net(next_states).max(1)[0].detach().unsqueeze(1)
+        next_state_values = self.target_net(next_states).gather(1, torch.argmax(self.policy_net(next_states), 1).unsqueeze(1)).detach()
         expected_state_action_values = (next_state_values * self.GAMMA) + reward_batch
         loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
         self.optimizer.zero_grad()
@@ -90,7 +94,7 @@ class Learner():
             param.grad.data.clamp_(-1, 1)
         self.optimizer.step()
 
-        return True, loss
+        return True, loss/self.BATCH_SIZE
 
     def main(self):
         train_epoch = self.start_epoch
@@ -121,3 +125,4 @@ class Learner():
 if __name__ == "__main__":
     learner = Learner()
     learner.main()
+
