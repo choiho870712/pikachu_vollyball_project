@@ -8,6 +8,7 @@ echo 0 > /proc/sys/kernel/yama/ptrace_scope
 # run learner
 assume there are 2 actors
 ```
+xhost +
 python learner --actor-num 2
 Learner: Model saved in  log/191101175440/model.pt
 ```
