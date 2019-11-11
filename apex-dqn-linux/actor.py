@@ -142,7 +142,8 @@ class Actor:
             return random.randrange(self.n_actions)
 
     def create_environment(self) :
-        process = subprocess.Popen(["wine","volleyball.exe", "WINEDEBUG=-all"])
+        time.sleep(3)
+        process = subprocess.Popen(["wine","volleyball.exe"])
         self.auto_start_new_game()
         self.env = Env(process.pid)
 
@@ -169,36 +170,40 @@ class Actor:
         test_epoch = self.start_epoch
         pushed = False
         while True:
-            # flag        // 0 : a game start,  1 : ball start, 2 : playing ball, 3 : ball end, 4 : game set, 10 : begin screen
             try :
+                # flag        // 0 : a game start,  1 : ball start, 2 : playing ball, 3 : ball end, 4 : game set, 10 : begin screen
                 flag = self.env.flag()
-            except :
-                self.create_environment()
 
-            if flag == 2 :
-                state, got_state = self.env.state()
-                if got_state :
-                    action = self.select_action(state)
-                    self.env.step(action)
-                    self.trajectory.push(state, action) # Store the state and action in trajectory
-                    pushed = False
-            elif flag == 3 :
-                if not pushed : # if win or loss, Store the trajectory in replay memory
-                    self.env.init()
-                    self.reward_function(self.trajectory, self.env.score())
-                    pushed = True
-            elif flag == 4 :
-                if not pushed : # if win or loss, Store the trajectory in replay memory
-                    self.env.init()
-                    self.reward_function(self.trajectory, self.env.score())
-                    test_epoch += 1
-                    self.writer.add_scalar('total_reward', self.env.final_score(), test_epoch)
-                    self.save_memory()
-                    self.load_model()
-                    self.save_checkpoint(test_epoch)
-                    pushed = True
-            elif flag == 10 :
-                self.auto_start_new_game()
+                if flag == 2 :
+                    state, got_state = self.env.state()
+                    if got_state :
+                        action = self.select_action(state)
+                        self.env.step(action)
+                        self.trajectory.push(state, action) # Store the state and action in trajectory
+                        pushed = False
+                elif flag == 3 :
+                    if not pushed : # if win or loss, Store the trajectory in replay memory
+                        self.env.init()
+                        self.reward_function(self.trajectory, self.env.score())
+                        pushed = True
+                elif flag == 4 :
+                    if not pushed : # if win or loss, Store the trajectory in replay memory
+                        self.env.init()
+                        self.reward_function(self.trajectory, self.env.score())
+                        test_epoch += 1
+                        self.writer.add_scalar('total_reward', self.env.final_score(), test_epoch)
+                        self.save_memory()
+                        self.load_model()
+                        self.save_checkpoint(test_epoch)
+                        pushed = True
+                elif flag == 10 :
+                    self.auto_start_new_game()
+
+            except :
+                del self.env
+                self.trajectory.clear()
+                self.create_environment()
+                pushed = False
 
 if __name__ == "__main__":
     actor = Actor()

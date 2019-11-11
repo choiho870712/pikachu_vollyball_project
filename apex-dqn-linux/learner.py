@@ -11,6 +11,7 @@ import torch.optim as optim
 from tensorboardX import SummaryWriter
 import numpy as np
 import os
+import subprocess
 
 parser = argparse.ArgumentParser(description='parser')
 parser.add_argument('--lr', type=float, default=1e-4, metavar='N', help='learning rate (default: 1e-4)')
@@ -99,6 +100,7 @@ class Learner():
     def main(self):
         train_epoch = self.start_epoch
         self.save_model(train_epoch)
+        kill_process_time_stamp = time.time()
 
         while True:
             is_optimized, loss = self.optimize_model()
@@ -121,6 +123,11 @@ class Learner():
                     if os.path.isfile(self.log + '/memory{}.pt'.format(i)) :
                         self.load_memory(i)
                     time.sleep(1)
+
+            if time.time() - kill_process_time_stamp > 300 :
+                subprocess.run(["killall", "-9", "volleyball.exe"])
+                kill_process_time_stamp = time.time()
+                print("kill all process")
 
 if __name__ == "__main__":
     learner = Learner()

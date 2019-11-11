@@ -63,6 +63,10 @@ class Env :
         self.score2 = 0
         print("envrionment is ready!")
 
+    def __del__(self) :
+        c.release()
+        print("envrionment deleted")
+
     def caculate_addresses(self) :
         # check memory value with scanmem
         # read memory with ptrace

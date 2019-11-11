@@ -15,7 +15,7 @@ solve :
 	sudo lsattr log/
 	sudo chmod -R 777 log/
 
-python learner.py --actor-num 10
+python learner.py --actor-num 10 --load-model 191109173152
 
 Xvfb :10 &
 export DISPLAY=:10
