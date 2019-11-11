@@ -64,7 +64,6 @@ class Env :
         print("envrionment is ready!")
 
     def __del__(self) :
-        c.release()
         print("envrionment deleted")
 
     def caculate_addresses(self) :

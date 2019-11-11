@@ -32,6 +32,7 @@ class Learner():
         self.load_model()
         self.replay_memory = ReplayMemory(30000)
         self.writer = SummaryWriter(self.log)
+        self.kill_process_time_stamp = time.time()
 
     def update_model(self) :
         self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -73,7 +74,11 @@ class Learner():
             os.remove(file)
             print('Memory loaded from ', file, 'size = {}'.format(len(self.replay_memory)))
         except :
-            pass
+            print('Memory missing', file)
+            if time.time() - self.kill_process_time_stamp > 300 :
+                subprocess.run(["killall", "-9", "volleyball.exe"])
+                print("kill all process")
+                self.kill_process_time_stamp = time.time()
 
     def optimize_model(self):
         if len(self.replay_memory) < self.BATCH_SIZE:
@@ -100,7 +105,6 @@ class Learner():
     def main(self):
         train_epoch = self.start_epoch
         self.save_model(train_epoch)
-        kill_process_time_stamp = time.time()
 
         while True:
             is_optimized, loss = self.optimize_model()
@@ -123,11 +127,6 @@ class Learner():
                     if os.path.isfile(self.log + '/memory{}.pt'.format(i)) :
                         self.load_memory(i)
                     time.sleep(1)
-
-            if time.time() - kill_process_time_stamp > 300 :
-                subprocess.run(["killall", "-9", "volleyball.exe"])
-                kill_process_time_stamp = time.time()
-                print("kill all process")
 
 if __name__ == "__main__":
     learner = Learner()

@@ -31,8 +31,9 @@ class Actor:
         self.EPS_START = 0.9
         self.EPS_END = 0.05
         self.EPS_DECAY = 200
-        self.trajectory = Trajectory(300)
-        self.replay_memory = ReplayMemory(1000)
+        self.discount = 0.9
+        self.trajectory = Trajectory(1000)
+        self.replay_memory = ReplayMemory(10000)
         self.policy_net = DQN().to(self.device)
         self.keyboard = Controller()
 
@@ -112,7 +113,6 @@ class Actor:
         sa_2 = trajectory.pop()
         normal_state_1 = self.normalization(sa_1.state)
         normal_state_2 = self.normalization(sa_2.state)
-        discount = 0.8
         reward = score
         while True :
             self.push_to_replay_memory(normal_state_2, sa_2.action, normal_state_1, reward)
@@ -121,8 +121,8 @@ class Actor:
             sa_1 = sa_2
             sa_2 = trajectory.pop()
 
-            if sa_2 != None and abs(reward) > 0.1 :
-                reward *= discount
+            if sa_2 != None and abs(reward) > 0.01 :
+                reward *= self.discount
                 normal_state_1 = normal_state_2
                 normal_state_2 = self.normalization(sa_2.state)
             else :
@@ -142,7 +142,6 @@ class Actor:
             return random.randrange(self.n_actions)
 
     def create_environment(self) :
-        time.sleep(3)
         process = subprocess.Popen(["wine","volleyball.exe"])
         self.auto_start_new_game()
         self.env = Env(process.pid)
@@ -163,7 +162,7 @@ class Actor:
         self.keyboard.press(Key.enter)     # press enter
         time.sleep(0.2)                    # wait for enter trigger the game
         self.keyboard.release(Key.enter)   # press enter
-        time.sleep(0.5)                    # wait for game loading player1 game
+        time.sleep(1.5)                    # wait for game loading player1 game
 
     def main(self):
         self.create_environment()
@@ -200,7 +199,7 @@ class Actor:
                     self.auto_start_new_game()
 
             except :
-                del self.env
+                self.env.init()
                 self.trajectory.clear()
                 self.create_environment()
                 pushed = False

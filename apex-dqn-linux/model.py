@@ -11,12 +11,15 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
         self.input_layer = nn.Linear(input_size, hidden_size)
         self.input_layer.weight.data.normal_(0, 0.1)
-        self.hidden_layer = nn.Linear(hidden_size, hidden_size)
-        self.hidden_layer.weight.data.normal_(0, 0.1)
+        self.hidden_layer_1 = nn.Linear(hidden_size, hidden_size)
+        self.hidden_layer_1.weight.data.normal_(0, 0.1)
+        self.hidden_layer_2 = nn.Linear(hidden_size, hidden_size)
+        self.hidden_layer_2.weight.data.normal_(0, 0.1)
         self.output_layer = nn.Linear(hidden_size, output_size)
         self.output_layer.weight.data.normal_(0, 0.1)
 
     def forward(self, x):
         x = F.relu(self.input_layer(x))
-        x = F.relu(self.hidden_layer(x))
+        x = F.relu(self.hidden_layer_1(x))
+        x = F.relu(self.hidden_layer_2(x))
         return self.output_layer(x)
