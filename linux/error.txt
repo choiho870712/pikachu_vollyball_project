@@ -17,9 +17,9 @@ solve :
 
 python learner.py --actor-num 10 --load-model 191111182208
 
-Xvfb :15 &
-export DISPLAY=:15
-DISPLAY=:15 python actor.py --simnum 14 --load-model 191111182208
+Xvfb :11 &
+export DISPLAY=:11
+DISPLAY=:11 python actor.py --simnum 10 --load-model 191111182208
 
 ps aux 
 kill -9 pid

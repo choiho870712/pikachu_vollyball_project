@@ -78,7 +78,9 @@ class Env :
         # ball.y      // init = 56  // range = 20  ~ 430
         # ball.x      // init = 0   // range = 0   ~ 252
         # flag        // 0 : a game start,  1 : ball start, 2 : playing ball, 3 : ball end, 4 : game set, 10 : begin screen
-        self.player1_y_address = self.reader.search_address(0x5a0000, 0x5b0000, 396, 244)
+        self.player1_y_address = 0
+        while self.player1_y_address == 0 :
+            self.player1_y_address = self.reader.search_address(0x5a0000, 0x5b0000, 396, 244)
         self.player1_x_address = self.player1_y_address + 0x4
         self.base = self.player1_y_address - (self.player1_y_address & 0xffff)
         self.player2_y_address = self.reader.search_address(self.base, self.base + 0xffff, 36, 244)

@@ -162,7 +162,7 @@ class Actor:
         self.keyboard.press(Key.enter)     # press enter
         time.sleep(0.2)                    # wait for enter trigger the game
         self.keyboard.release(Key.enter)   # press enter
-        time.sleep(1.5)                    # wait for game loading player1 game
+        time.sleep(0.5)                    # wait for game loading player1 game
 
     def main(self):
         self.create_environment()

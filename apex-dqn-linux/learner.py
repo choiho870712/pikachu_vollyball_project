@@ -31,6 +31,7 @@ class Learner():
         self.actor_num = args.actor_num
         self.load_model()
         self.replay_memory = ReplayMemory(30000)
+        self.miss_memory_count = 0
         self.writer = SummaryWriter(self.log)
         self.kill_process_time_stamp = time.time()
 
@@ -67,18 +68,17 @@ class Learner():
 
     def load_memory(self, simnum):
         file = self.log + 'memory{}.pt'.format(simnum)
-        try :
-            memory = torch.load(file)
-            self.replay_memory.extend(memory)
-            memory.clear()
-            os.remove(file)
-            print('Memory loaded from ', file, 'size = {}'.format(len(self.replay_memory)))
-        except :
+        if os.path.isfile(file):
+            try :
+                memory = torch.load(file)
+                os.remove(file)
+                self.replay_memory.extend(memory)
+                print('Memory loaded from ', file, 'size = {}'.format(len(self.replay_memory)))
+            except :
+                print("Memory loaded premission denied", file)
+        else :
             print('Memory missing', file)
-            if time.time() - self.kill_process_time_stamp > 300 :
-                subprocess.run(["killall", "-9", "volleyball.exe"])
-                print("kill all process")
-                self.kill_process_time_stamp = time.time()
+            self.miss_memory_count += 1
 
     def optimize_model(self):
         if len(self.replay_memory) < self.BATCH_SIZE:
@@ -118,9 +118,14 @@ class Learner():
                     if (train_epoch // self.log_interval) % self.actor_num == 0:
                         self.save_model(train_epoch)
                     self.load_memory((train_epoch // self.log_interval) % self.actor_num)
+                    subprocess.run(["killall", "-9", "winedbg"])
 
                 if train_epoch % self.update_cycle == 0:
                     self.update_model()
+
+                if self.miss_memory_count > 30 :
+                    subprocess.run(["killall", "-9", "volleyball.exe"])
+                    self.miss_memory_count = 0
             else :
                 print("Memory not enough")
                 for i in range(self.actor_num):
