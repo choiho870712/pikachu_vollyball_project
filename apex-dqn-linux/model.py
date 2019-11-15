@@ -5,21 +5,26 @@ import torch.nn.functional as F
 class DQN(nn.Module):
     def __init__(self):
         input_size = 16
-        hidden_size = 100
+        hidden_size = 128
         output_size = 6
         
         super(DQN, self).__init__()
-        self.input_layer = nn.Linear(input_size, hidden_size)
-        self.input_layer.weight.data.normal_(0, 0.1)
-        self.hidden_layer_1 = nn.Linear(hidden_size, hidden_size)
-        self.hidden_layer_1.weight.data.normal_(0, 0.1)
-        self.hidden_layer_2 = nn.Linear(hidden_size, hidden_size)
-        self.hidden_layer_2.weight.data.normal_(0, 0.1)
-        self.output_layer = nn.Linear(hidden_size, output_size)
-        self.output_layer.weight.data.normal_(0, 0.1)
+        self.vfc1 = nn.Linear(input_size, hidden_size)
+        self.vfc2 = nn.Linear(hidden_size, 1)
+        self.afc1 = nn.Linear(input_size, hidden_size)
+        self.afc2 = nn.Linear(hidden_size, output_size)
+        torch.nn.init.normal_(self.vfc1.weight, 0, 0.02)
+        torch.nn.init.normal_(self.vfc2.weight, 0, 0.02)
+        torch.nn.init.normal_(self.afc1.weight, 0, 0.02)
+        torch.nn.init.normal_(self.afc2.weight, 0, 0.02)
 
     def forward(self, x):
-        x = F.relu(self.input_layer(x))
-        x = F.relu(self.hidden_layer_1(x))
-        x = F.relu(self.hidden_layer_2(x))
-        return self.output_layer(x)
+        a = F.relu(self.afc1(x))
+        a = self.afc2(a)
+        av = torch.mean(a, 1, True)
+        av = av.expand_as(a)
+        v = F.relu(self.vfc1(x))
+        v = self.vfc2(v)
+        v = v.expand_as(a)
+        x = a - av + v
+        return x

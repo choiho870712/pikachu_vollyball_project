@@ -12,6 +12,7 @@ from tensorboardX import SummaryWriter
 import os
 from pynput.keyboard import Key, Controller
 import subprocess
+from collections import deque
 
 parser = argparse.ArgumentParser(description='parser')
 parser.add_argument('--simnum', type=int, default=0, metavar='N')
@@ -26,14 +27,11 @@ class Actor:
         self.log = args.log_directory + args.load_model + '/'
         self.writer = SummaryWriter(self.log + str(self.simnum) + '/')
         self.start_epoch = self.load_checkpoint()
-        self.steps_done = 0
         self.n_actions = 6
-        self.EPS_START = 0.9
-        self.EPS_END = 0.05
-        self.EPS_DECAY = 200
-        self.discount = 0.9
+        self.discount = 0.99
         self.trajectory = Trajectory(1000)
         self.replay_memory = ReplayMemory(10000)
+        self.priority = deque(maxlen=10000)
         self.policy_net = DQN().to(self.device)
         self.keyboard = Controller()
 
@@ -72,13 +70,15 @@ class Actor:
         file = self.log + 'memory{}.pt'.format(self.simnum)
         if os.path.isfile(file):
             memory = torch.load(file)
-            memory.extend(self.replay_memory)
+            memory['replay_memory'].extend(self.replay_memory)
+            memory['priority'].extend(self.priority)
         else:
-            memory = self.replay_memory
+            memory = {'replay_memory': self.replay_memory, 'priority': self.priority}
 
         torch.save(memory, file)
         print('Actor {}: Memory saved in '.format(self.simnum), file + ' size = {}'.format(len(self.replay_memory)))
         self.replay_memory.clear()
+        self.priority.clear()
 
     def normalization(self, state) :
         normal_state = []
@@ -108,7 +108,7 @@ class Actor:
         torch_state_2 = torch.tensor([state2], device=self.device, dtype=torch.float)
         self.replay_memory.push(torch_state_2, torch_action, torch_state_1, torch_reward)
 
-    def reward_function(self, trajectory, score) :
+    def reward_function(self, trajectory, priority, score) :
         sa_1 = trajectory.pop()
         sa_2 = trajectory.pop()
         normal_state_1 = self.normalization(sa_1.state)
@@ -121,25 +121,29 @@ class Actor:
             sa_1 = sa_2
             sa_2 = trajectory.pop()
 
-            if sa_2 != None and abs(reward) > 0.01 :
+            if sa_2 != None :
                 reward *= self.discount
                 normal_state_1 = normal_state_2
                 normal_state_2 = self.normalization(sa_2.state)
             else :
                 break
 
+        self.priority.extend(priority[0:len(priority)-1])
         self.trajectory.clear()
 
     def select_action(self, state):
+        self.policy_net.eval()
         state = torch.tensor([state], device=self.device, dtype=torch.float)
         sample = random.random()
-        eps_threshold = self.EPS_END + (self.EPS_START - self.EPS_END) * math.exp(-1. * self.steps_done / self.EPS_DECAY)
-        self.steps_done += 0.01
-        if sample > eps_threshold:
-            with torch.no_grad():
-                return self.policy_net(state).argmax().item()
+        Q = self.policy_net(state)
+        maxv, action = torch.max(Q, 1)
+
+        if sample > 0.9:
+            action = action.item()
         else:
-            return random.randrange(self.n_actions)
+            action = random.randrange(self.n_actions)
+
+        return maxv.item(), action
 
     def create_environment(self) :
         process = subprocess.Popen(["wine","volleyball.exe"])
@@ -168,6 +172,8 @@ class Actor:
         self.create_environment()
         test_epoch = self.start_epoch
         pushed = False
+        estimate = 0
+        priority_list = []
         while True:
             try :
                 # flag        // 0 : a game start,  1 : ball start, 2 : playing ball, 3 : ball end, 4 : game set, 10 : begin screen
@@ -176,19 +182,24 @@ class Actor:
                 if flag == 2 :
                     state, got_state = self.env.state()
                     if got_state :
-                        action = self.select_action(state)
+                        maxv, action = self.select_action(state)
                         self.env.step(action)
+                        priority_list.append(abs(self.discount * maxv - estimate))
+                        estimate = maxv
                         self.trajectory.push(state, action) # Store the state and action in trajectory
                         pushed = False
                 elif flag == 3 :
                     if not pushed : # if win or loss, Store the trajectory in replay memory
                         self.env.init()
-                        self.reward_function(self.trajectory, self.env.score())
+                        estimate = 0
+                        self.reward_function(self.trajectory, priority_list, self.env.score())
+                        priority_list = []
                         pushed = True
                 elif flag == 4 :
                     if not pushed : # if win or loss, Store the trajectory in replay memory
                         self.env.init()
-                        self.reward_function(self.trajectory, self.env.score())
+                        self.reward_function(self.trajectory, priority_list, self.env.score())
+                        priority_list = []
                         test_epoch += 1
                         self.writer.add_scalar('total_reward', self.env.final_score(), test_epoch)
                         self.save_memory()
