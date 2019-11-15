@@ -5,7 +5,7 @@ import torch.nn.functional as F
 class DQN(nn.Module):
     def __init__(self):
         input_size = 16
-        hidden_size = 128
+        hidden_size = 32
         output_size = 6
         
         super(DQN, self).__init__()

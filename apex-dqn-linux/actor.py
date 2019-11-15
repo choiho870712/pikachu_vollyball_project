@@ -28,7 +28,7 @@ class Actor:
         self.writer = SummaryWriter(self.log + str(self.simnum) + '/')
         self.start_epoch = self.load_checkpoint()
         self.n_actions = 6
-        self.discount = 0.99
+        self.discount = 0.9
         self.trajectory = Trajectory(1000)
         self.replay_memory = ReplayMemory(10000)
         self.priority = deque(maxlen=10000)
@@ -128,7 +128,7 @@ class Actor:
             else :
                 break
 
-        self.priority.extend(priority[0:len(priority)-1])
+        self.priority.extend(priority[1:len(priority)])
         self.trajectory.clear()
 
     def select_action(self, state):

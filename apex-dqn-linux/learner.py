@@ -53,7 +53,7 @@ class Learner():
                       'optimizer_dict': self.optimizer.state_dict(),
                       'train_epoch': train_epoch}
         torch.save(model_dict, file)
-        print('Learner: Model saved in ', file)
+        print('{} Learner: Model saved in '.format(train_epoch), file)
 
     def load_model(self):
         if args.load_model != '000000000000':
@@ -90,40 +90,44 @@ class Learner():
             print('Memory missing', file)
             self.miss_memory_count += 1
 
-    def sample(self, train_epoch):
+    def optimize_model(self, train_epoch):
+        if len(self.replay_memory) < self.BATCH_SIZE :
+            return False, 0
+
+        self.beta = min(1, self.beta_init + train_epoch * self.beta_increment)
         priority = (np.array(self.priority) + self.e) ** self.alpha
         weight = (len(priority) * priority) ** -self.beta
         weight /= weight.max()
-        self.weight = torch.tensor(weight, dtype=torch.float)
         priority = torch.tensor(priority, dtype=torch.float)
         sampler = torch.utils.data.sampler.WeightedRandomSampler(priority, self.BATCH_SIZE, replacement=True)
-        return sampler
 
-    def optimize_model(self, train_epoch):
-        if len(self.replay_memory) < self.BATCH_SIZE*100:
-            return False, 0
-
-        self.optimizer.zero_grad()
-        self.policy_net.train()
-        self.target_net.eval()
-        x_stack = torch.zeros(0, self.state_size).to(self.device)
-        y_stack = torch.zeros(0, self.action_size).to(self.device)
-        w = []
-        self.beta = min(1, self.beta_init + train_epoch * self.beta_increment)
-
-        for idx in self.sample(train_epoch):
+        batch_weight = []
+        batch_state = torch.zeros(0, self.state_size).to(self.device)
+        batch_action = torch.zeros(0, 1, dtype=torch.long).to(self.device)
+        batch_next_state = torch.zeros(0, self.state_size).to(self.device)
+        batch_reward = torch.zeros(0, 1).to(self.device)
+        batch_idx = []
+        for idx in sampler :
             state, action, next_state, reward = self.replay_memory.memory[idx]
-            state_value = self.policy_net(state)
-            next_state_value = self.policy_net(next_state)
-            tderror = reward + self.GAMMA * self.target_net(next_state)[0, torch.argmax(next_state_value, 1)] - state_value[0, action]
-            state_value[0, action] += tderror
-            x_stack = torch.cat([x_stack, state.data], 0)
-            y_stack = torch.cat([y_stack, state_value.data], 0)
-            w.append(self.weight[idx])
-            self.priority[idx] = tderror.abs().item()
-        pred = self.policy_net(x_stack)
-        w = torch.tensor(w, dtype=torch.float, device=self.device)
-        loss = torch.dot(F.smooth_l1_loss(pred, y_stack.detach(), reduction='none').sum(1), w.detach())
+            batch_state = torch.cat([batch_state, state.data], 0)
+            batch_action = torch.cat([batch_action, action.data], 0)
+            batch_next_state = torch.cat([batch_next_state, next_state.data], 0)
+            batch_reward = torch.cat([batch_reward, reward.data], 0)
+            batch_weight.append(weight[idx])
+            batch_idx.append(idx)
+        batch_weight = torch.tensor(batch_weight, dtype=torch.float, device=self.device)
+
+        state_action_value = self.policy_net(batch_state).gather(1, batch_action)
+        next_state_action_value = self.target_net(batch_next_state).gather(1, torch.argmax(self.policy_net(batch_next_state), 1).unsqueeze(1))
+        tderror = batch_reward + self.GAMMA * next_state_action_value - state_action_value
+        except_state_action_value = state_action_value + tderror
+        loss = F.smooth_l1_loss(state_action_value, except_state_action_value.detach(), reduction='none').squeeze(1)
+        loss = torch.dot(loss, batch_weight.detach())
+
+        count = 0
+        for idx in batch_idx :
+            self.priority[idx] = tderror[count].abs().item()
+            count += 1
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -156,6 +160,7 @@ class Learner():
 
                 if self.miss_memory_count > 5 :
                     subprocess.run(["killall", "-9", "volleyball.exe"])
+                    print("kill all process")
                     self.miss_memory_count = 0
             else :
                 print("Memory not enough")

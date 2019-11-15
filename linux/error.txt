@@ -15,11 +15,11 @@ solve :
 	sudo lsattr log/
 	sudo chmod -R 777 log/
 
-python learner.py --actor-num 15 --load-model 191115120712
+python learner.py --actor-num 15 --load-model 191115183200
 
-Xvfb :15 &
-export DISPLAY=:15
-DISPLAY=:15 python actor.py --simnum 14 --load-model 191115120712
+Xvfb :1 &
+export DISPLAY=:1
+DISPLAY=:1 python actor.py --simnum 0 --load-model 191115183200
 
 ps aux 
 kill -9 pid
