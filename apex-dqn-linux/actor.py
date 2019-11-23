@@ -28,7 +28,8 @@ class Actor:
         self.writer = SummaryWriter(self.log + str(self.simnum) + '/')
         self.start_epoch = self.load_checkpoint()
         self.n_actions = 6
-        self.discount = 0.9
+        self.base_reward = 0.1
+        self.discount = 0.98
         self.trajectory = Trajectory(1000)
         self.replay_memory = ReplayMemory(10000)
         self.priority = deque(maxlen=10000)
@@ -111,11 +112,9 @@ class Actor:
     def reward_function(self, trajectory, priority, score) :
         sa_1 = trajectory.pop()
         sa_2 = trajectory.pop()
-        normal_state_1 = self.normalization(sa_1.state)
-        normal_state_2 = self.normalization(sa_2.state)
-        reward = score
+        reward = score - self.base_reward
         while True :
-            self.push_to_replay_memory(normal_state_2, sa_2.action, normal_state_1, reward)
+            self.push_to_replay_memory(sa_2.state, sa_2.action, sa_1.state, reward + self.base_reward)
 
             # pop data from trajectory stack
             sa_1 = sa_2
@@ -123,11 +122,10 @@ class Actor:
 
             if sa_2 != None :
                 reward *= self.discount
-                normal_state_1 = normal_state_2
-                normal_state_2 = self.normalization(sa_2.state)
             else :
                 break
 
+        self.base_reward *= self.discount
         self.priority.extend(priority[1:len(priority)])
         self.trajectory.clear()
 
@@ -139,9 +137,9 @@ class Actor:
         maxv, action = torch.max(Q, 1)
 
         if sample > 0.9:
-            action = action.item()
-        else:
             action = random.randrange(self.n_actions)
+        else:
+            action = action.item()
 
         return maxv.item(), action
 
@@ -169,6 +167,7 @@ class Actor:
         time.sleep(0.5)                    # wait for game loading player1 game
 
     def main(self):
+        self.load_model()
         self.create_environment()
         test_epoch = self.start_epoch
         pushed = False
@@ -182,6 +181,7 @@ class Actor:
                 if flag == 2 :
                     state, got_state = self.env.state()
                     if got_state :
+                        state = self.normalization(state)
                         maxv, action = self.select_action(state)
                         self.env.step(action)
                         priority_list.append(abs(self.discount * maxv - estimate))

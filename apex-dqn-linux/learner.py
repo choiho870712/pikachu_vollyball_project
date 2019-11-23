@@ -32,7 +32,7 @@ class Learner():
         self.beta = self.beta_init
         self.beta_increment = 1e-6
         self.e = 1e-6
-        self.log_interval = 100
+        self.log_interval = 200
         self.update_cycle = 1000
         self.actor_num = args.actor_num
         self.state_size = 16
@@ -91,7 +91,7 @@ class Learner():
             self.miss_memory_count += 1
 
     def optimize_model(self, train_epoch):
-        if len(self.replay_memory) < self.BATCH_SIZE :
+        if len(self.replay_memory) < self.BATCH_SIZE * 100 :
             return False, 0
 
         self.beta = min(1, self.beta_init + train_epoch * self.beta_increment)

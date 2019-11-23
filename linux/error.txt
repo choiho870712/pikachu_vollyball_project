@@ -15,11 +15,54 @@ solve :
 	sudo lsattr log/
 	sudo chmod -R 777 log/
 
-python learner.py --actor-num 15 --load-model 191115183200
+python learner.py --actor-num 20 --load-model 191117230335
 
-Xvfb :1 &
-export DISPLAY=:1
-DISPLAY=:1 python actor.py --simnum 0 --load-model 191115183200
+Xvfb :2 &
+export DISPLAY=:2
+DISPLAY=:2 python actor.py --simnum 0 --load-model 191117230335
+
+Xvfb :3 &
+export DISPLAY=:3
+DISPLAY=:3 python actor.py --simnum 1 --load-model 191117230335
+
+Xvfb :4 &
+export DISPLAY=:4
+DISPLAY=:4 python actor.py --simnum 2 --load-model 191117230335
+
+Xvfb :5 &
+export DISPLAY=:5
+DISPLAY=:5 python actor.py --simnum 3 --load-model 191117230335
+
+Xvfb :6 &
+export DISPLAY=:6
+DISPLAY=:6 python actor.py --simnum 4 --load-model 191117230335
+
+Xvfb :7 &
+export DISPLAY=:7
+DISPLAY=:7 python actor.py --simnum 5 --load-model 191117230335
+
+Xvfb :8 &
+export DISPLAY=:8
+DISPLAY=:8 python actor.py --simnum 6 --load-model 191117230335
+
+Xvfb :9 &
+export DISPLAY=:9
+DISPLAY=:9 python actor.py --simnum 7 --load-model 191117230335
+
+Xvfb :10 &
+export DISPLAY=:10
+DISPLAY=:10 python actor.py --simnum 8 --load-model 191117230335
+
+Xvfb :11 &
+export DISPLAY=:11
+DISPLAY=:11 python actor.py --simnum 9 --load-model 191117230335
+
+Xvfb :12 &
+export DISPLAY=:12
+DISPLAY=:12 python actor.py --simnum 10 --load-model 191117230335
+
+
+
 
 ps aux 
 kill -9 pid
