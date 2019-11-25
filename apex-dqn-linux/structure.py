@@ -61,3 +61,38 @@ class ReplayMemory(object):
 
     def __len__(self):
         return len(self.memory)
+
+class Priority(object):
+
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.memory = []
+        self.position = 0
+
+    def push(self, priority):
+        if len(self.memory) < self.capacity:
+            self.memory.append(None)
+        self.memory[self.position] = priority
+        self.position = (self.position + 1) % self.capacity
+
+    def extend(self, priority) :
+        for i in range(len(priority)) :
+            if len(self.memory) < self.capacity:
+                self.memory.append(None)
+            self.memory[self.position] = priority.memory[i]
+            self.position = (self.position + 1) % self.capacity
+
+    def extend_list(self, priority_list) :
+        for i in range(len(priority_list)) :
+            if len(self.memory) < self.capacity:
+                self.memory.append(None)
+            self.memory[self.position] = priority_list[i]
+            self.position = (self.position + 1) % self.capacity
+
+    def clear(self) :
+        del self.memory
+        self.memory = []
+        self.position = 0
+
+    def __len__(self):
+        return len(self.memory)

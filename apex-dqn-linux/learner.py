@@ -1,6 +1,6 @@
 import control as c
 from model import DQN
-from structure import ReplayMemory, Transition
+from structure import ReplayMemory, Transition, Priority
 import argparse
 import datetime
 import time
@@ -15,7 +15,7 @@ import subprocess
 from collections import deque
 
 parser = argparse.ArgumentParser(description='parser')
-parser.add_argument('--lr', type=float, default=1e-4, metavar='N', help='learning rate (default: 1e-4)')
+parser.add_argument('--lr', type=float, default=1e-3, metavar='N', help='learning rate (default: 1e-4)')
 parser.add_argument('--actor-num', type=int, default=10, metavar='N')
 parser.add_argument('--load-model', type=str, default='000000000000', metavar='N',help='load previous model')
 parser.add_argument('--log-directory', type=str, default='log/', metavar='N',help='log directory')
@@ -32,14 +32,14 @@ class Learner():
         self.beta = self.beta_init
         self.beta_increment = 1e-6
         self.e = 1e-6
-        self.log_interval = 200
+        self.log_interval = 250
         self.update_cycle = 1000
         self.actor_num = args.actor_num
         self.state_size = 16
         self.action_size = 6
         self.load_model()
         self.replay_memory = ReplayMemory(30000)
-        self.priority = deque(maxlen=30000)
+        self.priority = Priority(30000)
         self.miss_memory_count = 0
         self.writer = SummaryWriter(self.log)
         self.kill_process_time_stamp = time.time()
@@ -83,7 +83,7 @@ class Learner():
                 os.remove(file)
                 self.replay_memory.extend(memory['replay_memory'])
                 self.priority.extend(memory['priority'])
-                print('Memory loaded from ', file, 'size = {}'.format(len(self.replay_memory)))
+                print('Memory loaded from ', file, 'size = {} {}'.format(len(self.replay_memory), len(self.priority)))
             except :
                 print("Memory loaded premission denied", file)
         else :
@@ -95,7 +95,7 @@ class Learner():
             return False, 0
 
         self.beta = min(1, self.beta_init + train_epoch * self.beta_increment)
-        priority = (np.array(self.priority) + self.e) ** self.alpha
+        priority = (np.array(self.priority.memory) + self.e) ** self.alpha
         weight = (len(priority) * priority) ** -self.beta
         weight /= weight.max()
         priority = torch.tensor(priority, dtype=torch.float)
@@ -126,7 +126,7 @@ class Learner():
 
         count = 0
         for idx in batch_idx :
-            self.priority[idx] = tderror[count].abs().item()
+            self.priority.memory[idx] = tderror[count].abs().item()
             count += 1
 
         self.optimizer.zero_grad()
@@ -139,17 +139,19 @@ class Learner():
 
     def main(self):
         train_epoch = self.start_epoch
+        total_loss = 0
         self.save_model(train_epoch)
 
         while True:
             is_optimized, loss = self.optimize_model(train_epoch)
             if is_optimized :
                 train_epoch += 1
+                total_loss += loss.item()
                 self.writer.add_scalar('loss', loss.item(), train_epoch)
 
                 if train_epoch % self.log_interval == 0:
-                    print('Train Epoch: {} \tLoss: {}'.format(train_epoch, loss.item()))
-                    self.writer.add_scalar('replay size', len(self.replay_memory), train_epoch)
+                    print('Train Epoch: {} \tLoss: {}'.format(train_epoch, total_loss/self.log_interval))
+                    total_loss = 0
                     if (train_epoch // self.log_interval) % self.actor_num == 0:
                         self.save_model(train_epoch)
                     self.load_memory((train_epoch // self.log_interval) % self.actor_num)

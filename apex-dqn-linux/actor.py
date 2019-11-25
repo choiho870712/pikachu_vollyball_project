@@ -1,7 +1,7 @@
 import argparse
 from env import Env
 from model import DQN
-from structure import Trajectory, ReplayMemory
+from structure import Trajectory, ReplayMemory, Priority
 import control as c
 import time
 import math
@@ -28,13 +28,18 @@ class Actor:
         self.writer = SummaryWriter(self.log + str(self.simnum) + '/')
         self.start_epoch = self.load_checkpoint()
         self.n_actions = 6
-        self.base_reward = 0.1
+        self.base_reward = 0
         self.discount = 0.98
         self.trajectory = Trajectory(1000)
         self.replay_memory = ReplayMemory(10000)
-        self.priority = deque(maxlen=10000)
+        self.priority = Priority(10000)
         self.policy_net = DQN().to(self.device)
         self.keyboard = Controller()
+
+    def save_model(self, final_score):
+        file = self.log + 'best_model{}.pt'.format(final_score)
+        torch.save(self.policy_net.state_dict(), file)
+        print('Actor: Model saved in ', file)
 
     def load_model(self):
         file = self.log + 'model.pt'
@@ -126,7 +131,7 @@ class Actor:
                 break
 
         self.base_reward *= self.discount
-        self.priority.extend(priority[1:len(priority)])
+        self.priority.extend_list(priority[1:len(priority)])
         self.trajectory.clear()
 
     def select_action(self, state):
@@ -136,7 +141,7 @@ class Actor:
         Q = self.policy_net(state)
         maxv, action = torch.max(Q, 1)
 
-        if sample > 0.9:
+        if sample > 1:
             action = random.randrange(self.n_actions)
         else:
             action = action.item()
@@ -201,7 +206,9 @@ class Actor:
                         self.reward_function(self.trajectory, priority_list, self.env.score())
                         priority_list = []
                         test_epoch += 1
-                        self.writer.add_scalar('total_reward', self.env.final_score(), test_epoch)
+                        final_score = self.env.final_score()
+                        self.writer.add_scalar('total_reward', final_score, test_epoch)
+                        self.save_model(final_score)
                         self.save_memory()
                         self.load_model()
                         self.save_checkpoint(test_epoch)

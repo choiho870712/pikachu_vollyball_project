@@ -61,6 +61,7 @@ class Env :
         self.time_stamp = time.time()
         self.score1 = 0
         self.score2 = 0
+        self.my_ball = False
         print("envrionment is ready!")
 
     def __del__(self) :
@@ -94,7 +95,10 @@ class Env :
 
     def init(self) :
         c.release()
-        self.cur_state = np.array([ 36, 244, 396, 244, 56, 0 ])
+        if self.my_ball == True :
+            self.cur_state = np.array([ 36, 244, 396, 244, 376, 0 ])
+        else :
+            self.cur_state = np.array([ 36, 244, 396, 244, 56, 0 ])
         self.pre_state = self.cur_state
 
     def sub_state(self) :
@@ -137,10 +141,12 @@ class Env :
         if self.score1 != score1 :
             self.score1 = score1
             print("win")
+            self.my_ball = True
             return 1
         elif self.score2 != score2 :
             self.score2 = score2
             print("lose")
+            self.my_ball = False
             return -1
         else :
             return 0
