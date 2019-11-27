@@ -26,9 +26,8 @@ class Actor:
         self.simnum = args.simnum
         self.log = args.log_directory + args.load_model + '/'
         self.writer = SummaryWriter(self.log + str(self.simnum) + '/')
-        self.start_epoch = self.load_checkpoint()
+        self.start_epoch, self.base_reward = self.load_checkpoint()
         self.n_actions = 6
-        self.base_reward = 0
         self.discount = 0.98
         self.trajectory = Trajectory(1000)
         self.replay_memory = ReplayMemory(10000)
@@ -48,7 +47,12 @@ class Actor:
                 model_dict = torch.load(file, map_location=lambda storage, loc: storage)
             else:
                 model_dict = torch.load(file)
-            self.policy_net.load_state_dict(model_dict['state_dict'])
+
+            try :
+                self.policy_net.load_state_dict(model_dict['state_dict'])
+            except :
+                self.policy_net.load_state_dict(model_dict)
+
             print('Actor {}: Model loaded from '.format(self.simnum), file)
 
         else:
@@ -57,7 +61,8 @@ class Actor:
     def save_checkpoint(self, idx):
         file = self.log + 'checkpoint{}.pt'.format(self.simnum)
         checkpoint = {'simnum': self.simnum,
-                      'epoch': idx}
+                      'epoch': idx,
+                      'base_reward': self.base_reward}
         torch.save(checkpoint, file)
         print('Actor {}: Checkpoint saved in '.format(self.simnum), file)
 
@@ -67,10 +72,10 @@ class Actor:
             checkpoint = torch.load(file)
             self.simnum = checkpoint['simnum']
             print("Actor {}: loaded checkpoint ".format(self.simnum), '(epoch {})'.format(checkpoint['epoch']), file)
-            return checkpoint['epoch']
+            return checkpoint['epoch'], checkpoint['base_reward']
         else:
             print("Actor {}: no checkpoint found at ".format(self.simnum), file)
-            return 0
+            return 0, 1
 
     def save_memory(self):
         file = self.log + 'memory{}.pt'.format(self.simnum)
@@ -141,7 +146,7 @@ class Actor:
         Q = self.policy_net(state)
         maxv, action = torch.max(Q, 1)
 
-        if sample > 1:
+        if sample > 0.9:
             action = random.randrange(self.n_actions)
         else:
             action = action.item()
