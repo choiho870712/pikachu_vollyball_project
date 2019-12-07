@@ -1,0 +1,22 @@
+# images
+*.png
+*.gif
+
+# python stuff
+*.pyc
+*.npy
+.ipynb_checkpoints/
+__pycache__/
+
+# model weight and bias
+*.pth
+
+# logs
+*.csv
+
+# bak files
+*_bak.py
+
+# other training data
+data/
+saved_model/
