@@ -27,7 +27,7 @@ def test(rank, args, shared_model, counter):
     done = True
     
     if args.save_path == None:
-        model_dir = join('saved_model/', args.env_name)
+        model_dir = 'saved_model/'
     else:
         model_dir = args.save_path
 
@@ -35,7 +35,7 @@ def test(rank, args, shared_model, counter):
         os.makedirs(model_dir)
 
     if args.log == None:
-        log_path = join('log/', args.env_name+'.csv')
+        log_path = join('log/', 'pika_log.csv')
     else:
         log_path = args.log
     print('Time (HMS), num steps, FPS, episode reward, episode length', file=open(log_path, "a"))
