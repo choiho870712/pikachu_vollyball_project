@@ -36,8 +36,6 @@ parser.add_argument('--num-steps', type=int, default=20,
                     help='number of forward steps in A3C (default: 20)')
 parser.add_argument('--max-episode-length', type=int, default=600,
                     help='maximum length of an episode (default: 600)')
-parser.add_argument('--env-name', default='sk',
-                    help='environment to train on (default: sk)')
 parser.add_argument('--no-shared', default=False,
                     help='use an optimizer without shared momentum (default=False)')
 parser.add_argument('--save-path', default=None,
